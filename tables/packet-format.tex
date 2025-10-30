@@ -1,0 +1,10 @@
+\PacketRow{1}{SOM}{Start of Message.\textsuperscript{1}}{0x53}
+\PacketRow{1}{ADDR}{Physical address of the PD.\textsuperscript{2}\\Broadcast accepted by all PDs.\textsuperscript{3}}{0x00--0x7E\\0x7F (broadcast)}
+\PacketRow{1}{LEN\_LSB}{Packet length least significant byte (includes header).\textsuperscript{4}}{Any}
+\PacketRow{1}{LEN\_MSB}{Packet length most significant byte (includes header).\textsuperscript{3}}{Any}
+\PacketRow{1}{CTRL}{Message control information.}{Refer to Table 2}
+\PacketRow{1}{SEC\_BLK\_LEN}{Optional security control block length.}{Any}
+\PacketRow{1}{SEC\_BLK\_TYPE}{Optional security block type.\textsuperscript{5}}{Refer to Table 3}
+\PacketRow{1}{SEC\_BLK\_DATA}{Optional security block data.}{Based on type}
+\PacketRow{1}{CMND/REPLY}{Command or reply code.\textsuperscript{6}}{Refer to Annex A}
+\PacketRow{0--n}{DATA}{Optional data block.}{Based on CMND/REPLY}

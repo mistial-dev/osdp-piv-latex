@@ -1,0 +1,48 @@
+\ProvidesPackage{tables}[2025/10/29 OSDP table helpers]
+
+\RequirePackage{array}
+\RequirePackage{xcolor}
+\RequirePackage{colortbl}
+
+\definecolor{PacketHeaderBg}{HTML}{101010}
+\definecolor{PacketHeaderFg}{HTML}{FFFFFF}
+
+\newlength{\PacketSizeCol}
+\newlength{\PacketNameCol}
+\newlength{\PacketMeaningCol}
+\newlength{\PacketValueCol}
+
+\setlength{\PacketSizeCol}{1.4cm}
+\setlength{\PacketNameCol}{3.0cm}
+\setlength{\PacketMeaningCol}{8.0cm}
+\setlength{\PacketValueCol}{3.1cm}
+
+\newcommand{\PacketTableStart}[1]{%
+  \setlength{\tabcolsep}{8pt}%
+  \renewcommand{\arraystretch}{1.35}%
+  \begin{table}[ht]
+    \centering
+    \caption{#1}
+    \begin{tabular}{|>{\centering\arraybackslash}p{\PacketSizeCol}|>{\raggedright\arraybackslash}p{\PacketNameCol}|>{\raggedright\arraybackslash}p{\PacketMeaningCol}|>{\raggedright\arraybackslash}p{\PacketValueCol}|}
+      \hline
+      \rowcolor{PacketHeaderBg}
+      \textcolor{PacketHeaderFg}{\bfseries Size (bytes)} &
+      \textcolor{PacketHeaderFg}{\bfseries Name} &
+      \textcolor{PacketHeaderFg}{\bfseries Meaning} &
+      \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
+}
+
+\newcommand{\PacketTableEnd}{%
+    \end{tabular}
+  \end{table}
+}
+
+\newcommand{\PacketRow}[4]{#1 & #2 & #3 & #4\\\hline}
+
+\newcommand{\PacketTableFromFile}[2]{%
+  \PacketTableStart{#2}%
+  \input{#1}%
+  \PacketTableEnd
+}
+
+\endinput

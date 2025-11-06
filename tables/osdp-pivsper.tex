@@ -1,0 +1,5 @@
+\begin{PacketTable}{PIV Secure PIN Entry Reply (osdp\_PIVSPER)}
+  \PacketRow{1}{CMND}{Reply identifier.}{TBA}
+  \PacketRow{1}{Result}{Outcome of the secure PIN entry operation. See Table~\ref{tab:pivsper-results}.}{0x00--0xFF}
+  \PacketRow{1}{Attempts Remaining}{Match attempts remaining when the result is PIN mismatch; otherwise transmitted as \texttt{0x00}.}{0x00--0xFF}
+\end{PacketTable}

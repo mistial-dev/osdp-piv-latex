@@ -1,0 +1,21 @@
+\Needspace{12\baselineskip}
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{SPE Mode Values}
+  \label{tab:pivspe-modes}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Value} & \textcolor{PacketHeaderFg}{\bfseries Description} \\\hline
+    0x00 & Status only – report current SPE state without initiating entry. \\\hline
+    0x01 & Normal – single PIN verification with the credential present (contact). \\\hline
+    0x02 & VCI pre-cache – collect a PIN prior to credential presentation for VCI use. \\\hline
+    0x03 & VCI execute – perform PIN verification over VCI using a cached PIN. \\\hline
+    0x04 & PIN caching – cache PIN for subsequent operations (non-FICAM use cases). \\\hline
+    0x05 & Clear/abort – clear any cached PIN and abort the current operation. \\\hline
+    0x06--0x7F & Reserved for future use (set to zero). \\\hline
+    0x80--0xFF & Private use. \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}

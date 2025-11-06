@@ -31,7 +31,7 @@ OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a
 \begin{itemize}
   \item The ACU \textbf{SHALL} transmit the PIV Object Identifier as three bytes encoded most-significant byte first. When the identifier contains fewer than three significant bytes, the ACU \textbf{SHALL} left-pad the value with \texttt{0x00} or \texttt{0x0000}, as required, so that the transmitted field is exactly three bytes. The PD \textbf{SHALL NOT} forward those pad bytes to the credential; it \textbf{SHALL} issue the ISO~7816-4 \texttt{GET DATA} APDU using only the significant identifier bytes. If VCI secure messaging is established, the PD \textbf{SHALL} use the appropriate secure channel automatically; no explicit selector is present in the command.
   \item The field previously described as “PIV element ID” is renamed \emph{PIV Tag}. A tag value of \texttt{0x00} directs the PD to return the complete BER-TLV structure, including the outer \texttt{0x53} or \texttt{0x73} tag and length. Any non-zero value selects a single root-level tag within the object. The PD \textbf{MUST} remove the outer wrapper only when it is \texttt{0x53} or \texttt{0x73}; if the outer wrapper has any other value, the PD \textbf{MUST} reject the command unless the tag value is \texttt{0x00}. Tags \textbf{SHALL} be a single byte in the range \texttt{0x01}--\texttt{0xFF}; multi-byte DER tags are not supported and \textbf{MUST} be retrieved by issuing a tag value of \texttt{0x00} and parsing the returned object at the ACU.
-  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_NAK} with error code \texttt{0x0D} when security prerequisites are not satisfied and \texttt{0x0E} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}.
+  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_NAK} with error code \texttt{0x23} when security prerequisites are not satisfied and \texttt{0x24} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}. If the credential is not present or is removed during processing, PDs may return error code \texttt{0x27}.
 \end{itemize}
 
 \input{tables/osdp-pivdata}
@@ -59,13 +59,14 @@ The following \texttt{osdp\_NAK} error codes are introduced by the Enhanced PIV 
     \hline
     \rowcolor{PacketHeaderBg}
     \textcolor{PacketHeaderFg}{\bfseries Code} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
-    0x0A & Function not supported. \\\hline
-    0x0B & Insufficient PD memory to complete the requested operation. \\\hline
-    0x0C & Insufficient credential memory or storage space. \\\hline
-    0x0D & Security status not satisfied. \\\hline
-    0x0E & Data object or tag not found. \\\hline
-    0x0F & VCI not established. \\\hline
-    0x10 & PIV Auto not configured. \\\hline
+    0x20 & Function not supported by credential (or PD does not implement the command). \\\hline
+    0x21 & Insufficient PD memory or storage to complete the requested operation. \\\hline
+    0x22 & Insufficient credential memory or storage space. \\\hline
+    0x23 & Credential security status not satisfied. \\\hline
+    0x24 & Data object or tag not found. \\\hline
+    0x25 & VCI not established. \\\hline
+    0x26 & PIV Auto not configured. \\\hline
+    0x27 & Credential not present or removed. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}

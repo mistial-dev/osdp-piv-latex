@@ -1,0 +1,23 @@
+\Needspace{12\baselineskip}
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{PIVSPE Result Codes}
+  \label{tab:pivsper-results}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Value} & \textcolor{PacketHeaderFg}{\bfseries Description} \\\hline
+    0x00 & Success – PIN verified. \\\hline
+    0x01 & Timeout – PIN entry did not begin within the allotted time. \\\hline
+    0x02 & Timeout – inter-digit interval exceeded. \\\hline
+    0x03 & PIN mismatch. \\\hline
+    0x04 & Credential removed during entry. \\\hline
+    0x05 & Credential PIN blocked. \\\hline
+    0x06 & Wrong interface for the requested mode. \\\hline
+    0x07 & Incorrect parameters. \\\hline
+    0x08 & Security condition not met. \\\hline
+    0x09--0xFF & Reserved for future use. \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}

@@ -1,0 +1,8 @@
+\begin{PacketTable}{PIV Secure PIN Entry (osdp\_PIVSPE)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{SPE Mode}{Secure PIN Entry operating mode. See Table~\ref{tab:pivspe-modes}.}{0x00--0xFF}
+  \PacketRow{1}{Start Timeout}{Seconds allowed to begin key entry (0 = no timeout).}{0x00--0xFF}
+  \PacketRow{1}{Inter-key Timeout}{Seconds allowed between keystrokes (0 = no timeout).}{0x00--0xFF}
+  \PacketRow{1}{Flags}{Behaviour modifiers. See Table~\ref{tab:pivspe-flags}.}{0x00--0xFF}
+  \PacketRow{2}{Cache Validity}{PIN cache validity in seconds (LSB first). A value of \texttt{0x0000} disables caching.}{0x0000--0xFFFF}
+\end{PacketTable}

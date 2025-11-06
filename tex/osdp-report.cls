@@ -28,6 +28,7 @@
   linkcolor=OSDPBlue,
   urlcolor=OSDPBlue,
   citecolor=OSDPBlue,
+  linktoc=all,
   pdfauthor={Security Industry Association},
   pdftitle={OSDP Specification}
 }

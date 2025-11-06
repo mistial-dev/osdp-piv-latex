@@ -1,0 +1,9 @@
+\begin{PacketTable}{Authentication Challenge (osdp\_CRAUTH)}
+  \PacketRow{1}{CMND}{Command identifier.}{0xA5}
+  \PacketRow{2}{TOTAL}{Length of the complete message, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{OFFSET}{Offset of this fragment within the complete message, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{DATA\_LEN}{Length of the fragment payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{1}{Algorithm}{Cryptographic mechanism. Supported values include \texttt{0x05}/\texttt{0x06}/\texttt{0x07} (RSA signature), \texttt{0x08}/\texttt{0x0A}/\texttt{0x0C} (AES encryption with 128/192/256-bit keys), and \texttt{0x11}/\texttt{0x14} (ECC-P256/P384 ECDH).}{0x00--0xFF}
+  \PacketRow{1}{Reference Identifier}{Key reference passed to \texttt{GENERAL AUTHENTICATE}.}{0x00--0xFF}
+  \PacketRow{0--n}{Challenge}{For RSA algorithms, the datum to be signed (no padding applied by the PD). For AES algorithms, the plaintext block(s) to be encrypted, pre-padded by the ACU as required. For \texttt{0x11}/\texttt{0x14}, the peer public key encoded as \texttt{7C Len 82 00 85 Len (04 || X || Y)} with coordinates padded to curve length.}{0x00--0xFF}
+\end{PacketTable}

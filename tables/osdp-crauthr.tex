@@ -1,0 +1,7 @@
+\begin{PacketTable}{Response to Challenge (osdp\_CRAUTHR)}
+  \PacketRow{1}{CMND}{Reply identifier.}{0x82}
+  \PacketRow{2}{TOTAL}{Length of the complete response, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{OFFSET}{Offset of this fragment within the complete response, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{DATA\_LEN}{Length of the fragment payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{0--n}{Response Data}{Signature, encrypted block, or shared-secret material returned by the credential. The credential’s BER-TLV structure is preserved exactly as received (status word excluded).}{0x00--0xFF}
+\end{PacketTable}

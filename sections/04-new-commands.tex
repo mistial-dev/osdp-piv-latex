@@ -9,3 +9,87 @@ The \texttt{osdp\_PIVPUTDATA} command instructs the PD to deliver an ISO~7816-4 
 \input{tables/osdp-pivputdata}
 
 \paragraph{Responses} A successful write is acknowledged with \texttt{osdp\_ACK}. Failures \textbf{SHALL} use \texttt{osdp\_NAK} with one of the Enhanced PIV error codes defined in Subsection~\ref{sec:new-piv-error-codes}: \texttt{0x0A} when the function is not supported, \texttt{0x0B} when the PD lacks buffer space to stage the payload, \texttt{0x0C} when the credential has insufficient storage, or \texttt{0x0D} when security conditions on the credential are not met.
+
+\subsection{Card Status (osdp\_CARDSTATUS)}
+
+The \texttt{osdp\_CARDSTATUS} command requests the current credential context from the PD. The command code is to be assigned; PDs \textbf{SHALL} advertise support via Function Code~13 bit~2 before controllers attempt to use this command. The payload selects the status record that should be returned (currently only the standard profile).
+
+\input{tables/osdp-cardstatus}
+
+PDs \textbf{SHALL} return \texttt{osdp\_NAK} with an appropriate error code (for example \texttt{0x03} unknown command, \texttt{0x05} incorrect parameter) if the requested status type is not supported.
+
+\subsection{Card Status Reply (osdp\_CARDSTATUSR)}
+
+In response to \texttt{osdp\_CARDSTATUS}, or when the credential state changes after a PIV mode has been selected, the PD reports the detected credential type, VCI state, and optional application data. When the card state changes asynchronously, the PD \textbf{MAY} send \texttt{osdp\_CARDSTATUSR} as the next \texttt{osdp\_POLL} reply following OSDP’s standard unsolicited-report rules. ACUs may therefore receive the reply either immediately after issuing \texttt{osdp\_CARDSTATUS} or as an unsolicited poll response when a credential is presented or removed.
+
+\input{tables/osdp-cardstatusr}
+
+A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_NAK} and omit the reply. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}). When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe whether a secure channel is currently established, which trust anchor enabled the session, and whether the presented credential requires a pairing code for VCI operation.
+
+\subsection{TWIC Privacy Key Load (osdp\_PIV\_LOADTPK)}
+
+The \texttt{osdp\_PIV\_LOADTPK} command instructs the PD to cache a TWIC Privacy Key (TPK) for use with subsequent biometric operations against a TWIC credential. The command code is to be assigned. PDs \textbf{SHALL} advertise support for TWIC biometric processing via Function Code~14 before controllers attempt to use this command.
+
+\input{tables/osdp-loadtpk}
+
+Controllers set \emph{Cache Timeout} to define how long (in seconds) the PD may retain the key. A value of \texttt{0x00} clears any cached TPK immediately. Values \texttt{0x01}--\texttt{0xFF} allow caching for up to 255 seconds. Bit~0 of \emph{Control Flags} directs the PD to clear the cached TPK when the credential is removed; all other bits are reserved and \textbf{SHALL} be transmitted as zero. If the PD does not support TWIC TPK caching it \textbf{SHALL} return \texttt{osdp\_NAK} \texttt{0x03}. Invalid payloads (for example reserved bits set) \textbf{SHALL} elicit \texttt{osdp\_NAK} \texttt{0x05}.
+
+\subsection{PIV VCI Pairing Code Transmit (osdp\_PIV\_XMITPAIRING)}
+
+The \texttt{osdp\_PIV\_XMITPAIRING} command delivers an eight-digit pairing code to the PD for use during Virtual Contact Interface (VCI) establishment. The command code is to be assigned. Controllers \textbf{SHALL NOT} issue this command unless a PIV application is currently selected and VCI mode is active.
+
+\input{tables/osdp-xmitpairing}
+
+The pairing code is encoded as eight ASCII digits (\texttt{'0'}--\texttt{'9'}). A PD that has not yet established VCI \textbf{SHALL} return \texttt{osdp\_NAK} \texttt{0x0F} (VCI not established). If no PIV application is selected, the PD \textbf{SHALL} return \texttt{osdp\_NAK} \texttt{0x05}. PDs \textbf{SHALL} clear the stored pairing code when VCI is torn down or when the active PIV mode changes.
+
+\subsection{Set PIV Mode (osdp\_PIVMODE)}\label{sec:pivmode}
+
+The \texttt{osdp\_PIVMODE} command defines the operating context for PIV, TWIC, and related credential transactions. OSDP~2.3 replaces the legacy “Application + AID” fields with a TLV list of configuration descriptors so controllers can specify multiple application profiles, preferred interfaces, and optional Application Identifiers. The command code remains to be assigned. PDs \textbf{SHALL} advertise support via Function Code~13 bit~\texttt{0x04}.
+
+\input{tables/osdp-pivmode}
+
+The \emph{PIV Mode Flags} byte enables global behaviours such as autonomous operation and VCI usage (Table~\ref{tab:pivmode-flags}). Bits not listed remain reserved and \textbf{SHALL} be transmitted as zero.
+
+\input{tables/osdp-pivmode-flags}
+
+After the flags, the payload uses standard multi-part framing fields and a configuration count (1--32). Each configuration appears as a TLV:
+
+\begin{itemize}
+  \item \textbf{Global Interface Mask (Tag \texttt{0x10}, optional)} — One-byte mask that limits the interfaces the PD may use for all configurations. Bit assignments follow Function Code~13 (bit~0 contact, bit~1 contactless, bit~2 low-frequency, bit~3 Bluetooth, bit~4 barcode, bit~5 UHF/RAIN). A value of \texttt{0x00} indicates no global restriction.
+  \item \textbf{Configuration Entry (Tag \texttt{0x01})} — Contains the data-model identifier, a per-entry interface mask, the AID length, and the optional AID:
+    \begin{itemize}
+      \item \emph{Data Model} (\texttt{0x01} PIV, \texttt{0x02} TWIC, values \texttt{0x04}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use).
+      \item \emph{Interface Mask} — Uses the same bit positions as the global mask; \texttt{0x00} means “any interface permitted by the global mask.”
+      \item \emph{AID Length} (0--16) and \emph{AID} bytes when provided.
+    \end{itemize}
+\end{itemize}
+
+PDs process configuration entries in order, applying the global mask (when present) before honouring each entry’s mask. Invalid masks, unknown data-model identifiers, or malformed TLVs \textbf{SHALL} result in \texttt{osdp\_NAK} \texttt{0x05}. Controllers \textbf{SHALL} send the command over a secure channel where required; the PD \textbf{SHALL} return \texttt{osdp\_NAK} \texttt{0x06} if the necessary security conditions are not satisfied. Multi-part framing errors result in \texttt{osdp\_NAK} \texttt{0x07}. If the PD cannot cache the requested configuration set, it \textbf{SHALL} respond with \texttt{osdp\_NAK} \texttt{0x0B}.
+
+When PIV Auto is enabled, PDs interrogate the credential on presentation, establish VCI automatically when possible, and advance through authentication without explicit ACU prompts. If a pairing code is required, the PD signals the state change via \texttt{osdp\_CARDSTATUSR}; the ACU then provides the code using \texttt{osdp\_PIV\_XMITPAIRING}. Commands that rely on PIV Auto \textbf{SHALL} return \texttt{osdp\_NAK} \texttt{0x10} when the feature has not been configured.
+
+\subsection{VCI Trust Anchor Load (osdp\_PIV\_VCILOADTA)}
+
+The \texttt{osdp\_PIV\_VCILOADTA} command loads, replaces, or deletes a Virtual Contact Interface (VCI) trust anchor. Trust anchors must be cached before a PD can verify card certificates during VCI establishment. The command code is to be assigned.
+
+\input{tables/osdp-vciloatda}
+
+The metadata block (operation, identifier, IIN, anchor length) appears only in the first fragment where \texttt{MpOffset = 0}; subsequent fragments carry additional anchor bytes. Controllers set \emph{Operation} to \texttt{0x00} to load or replace the anchor identified by \emph{Trust Anchor ID}. Set \emph{Operation} to \texttt{0x01} with \emph{Anchor Length} \texttt{0x0000} to delete the anchor. The \emph{Issuer Identifier Number (IIN)} is the leftmost eight bytes of the subjectKeyIdentifier in the content signing certificate used to protect the credential. The \emph{Anchor Length} declares the total size of the anchor payload; controllers shall send the exact number of bytes in one or more fragments.
+
+PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. A successful operation returns \texttt{osdp\_ACK}. Failures return \texttt{osdp\_NAK} with:
+\begin{itemize}
+  \item \texttt{0x03} when the PD does not support trust-anchor caching.
+  \item \texttt{0x05} for malformed metadata (unknown operation, reserved bits, invalid lengths).
+  \item \texttt{0x07} when multi-part sequencing fails.
+  \item \texttt{0x0B} when the PD lacks storage space for the anchor.
+\end{itemize}
+
+PDs are not required to maintain a real-time clock; they need only verify that credential certificates presented later fall within the trust anchor’s validity period. Implementers may perform stricter date checks if desired. PDs may retain either the full anchor blob or a compact record containing the public key, issuer identifier, validity period, and anchor number so long as the supplied IIN remains available for matching.
+
+\subsection{VCI Trust Anchor Status (osdp\_PIV\_VCITASTATUS)}
+
+The \texttt{osdp\_PIV\_VCITASTATUS} command enumerates cached trust anchors and reports remaining storage capacity. The command code is to be assigned. The request carries no payload. The reply uses the standard multi-part fields (\texttt{TOTAL}, \texttt{OFFSET}, \texttt{DATA\_LEN}) so PDs can stream the inventory across one or more fragments.
+
+\input{tables/osdp-vcitastatus}
+
+The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Controllers can use this information to decide whether to load additional anchors or delete existing ones. NAK responses follow the standard pattern: \texttt{0x03} for unsupported command, \texttt{0x07} for multi-part errors.

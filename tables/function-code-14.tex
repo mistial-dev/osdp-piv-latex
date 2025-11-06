@@ -1,0 +1,18 @@
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{Function Code 14 Compliance Flags}
+  \label{tab:function-code-14-flags}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
+    0x80 & PD supports the OSDP~2.3 biometric command set. \\\hline
+    0x01 & PD performs off-card fingerprint comparison using FIPS~201 BIO ANSI INCITS~378 templates. \\\hline
+    0x02 & PD performs on-card fingerprint comparison using FIPS~201 OCC processes. \\\hline
+    0x04 & PD performs off-card iris comparison aligned with FIPS~201 BIO guidance. \\\hline
+    0x08 & PD performs off-card facial comparison using ANSI INCITS~385-2004 images stored on the credential. \\\hline
+    0x10 & PD supports OSDP~2.3 autonomous PIV operation (PIV Auto). \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}

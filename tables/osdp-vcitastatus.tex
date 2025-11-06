@@ -1,0 +1,9 @@
+\begin{PacketTable}{VCI Trust Anchor Status Reply (osdp\_PIV\_VCITASTATUSR)}
+  \PacketRow{1}{CMND}{Reply identifier.}{TBA}
+  \PacketRow{2}{TOTAL}{Length of the complete status payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{OFFSET}{Offset of this fragment within the status payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{DATA\_LEN}{Length of the data block in this fragment, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{1}{Total Anchor Count}{Number of cached trust anchors.}{0x00--0xFF}
+  \PacketRow{2}{Available Bytes}{Remaining storage capacity for trust anchors, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{0--n}{Anchor Records}{Zero or more records. Each record contains: \texttt{Trust Anchor ID} (1 byte), \texttt{Issuer Identifier Number} (8 bytes), \texttt{Anchor Length} (2 bytes LSB first), \texttt{Attributes} (1 byte, reserved). Records that span fragments continue in subsequent replies.}{--}
+\end{PacketTable}

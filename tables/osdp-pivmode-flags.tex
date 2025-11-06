@@ -1,0 +1,15 @@
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{PIV Mode Flags}
+  \label{tab:pivmode-flags}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
+    0x01 & Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, and advances through the authentication flow without explicit ACU prompts. \\\hline
+    0x02 & Permit VCI usage when available. \\\hline
+    0x04 & Enforce FICAM strict mode (PIV applications only). \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}

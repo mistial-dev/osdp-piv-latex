@@ -1,0 +1,4 @@
+\begin{PacketTable}{Card Status Request (osdp\_CARDSTATUS)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{Status Type}{Requested status record. \texttt{0x01} selects the standard PIV card status profile. Values \texttt{0x02}--\texttt{0x7F} are reserved and shall elicit \texttt{osdp\_NAK}. Values \texttt{0x80}--\texttt{0xFF} are reserved for private use.}{0x00--0xFF}
+\end{PacketTable}

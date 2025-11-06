@@ -1,0 +1,6 @@
+\begin{PacketTable}{TWIC Privacy Key Load (osdp\_PIV\_LOADTPK)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{Cache Timeout}{Number of seconds to retain the cached TPK. \texttt{0x00} clears any cached key immediately; \texttt{0x01}--\texttt{0xFF} permit caching for up to 255 seconds.}{0x00--0xFF}
+  \PacketRow{1}{Control Flags}{Bit~0 set requests automatic clearing when the credential is removed; all other bits \textbf{SHALL} be zero.}{0x00--0xFF}
+  \PacketRow{32}{TPK}{Trusted Processing Key bytes to cache for the next TWIC biometric operation.}{0x00--0xFF}
+\end{PacketTable}

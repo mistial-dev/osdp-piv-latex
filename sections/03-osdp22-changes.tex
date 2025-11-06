@@ -4,6 +4,26 @@ This section documents the normative deltas that apply when an OSDP~2.2 implemen
 
 \subsection{Updated Command Definitions}
 
+\subsubsection{Authentication Challenge (osdp\_CRAUTH)}
+
+OSDP~2.2 transports the ISO/IEC~7816-4 \texttt{GENERAL AUTHENTICATE} command through \texttt{osdp\_CRAUTH}. The OSDP~2.3 profile maintains the same framing fields (\texttt{TOTAL}, \texttt{OFFSET}, \texttt{DATA\_LEN}) but extends the semantics of the command payload so PDs can carry both the classic RSA signing flow and the enhanced elliptic-curve key-agreement flow.
+
+\begin{itemize}
+  \item The \emph{Algorithm} field continues to be sent in the first fragment only. Codes \texttt{0x05}, \texttt{0x06}, and \texttt{0x07} select RSA signing operations and preserve backwards compatibility with OSDP~2.2. Codes \texttt{0x08}, \texttt{0x0A}, and \texttt{0x0C} select AES encryption using 128-, 192-, and 256-bit keys respectively. Codes \texttt{0x11} and \texttt{0x14} select elliptic-curve key agreement using the P-256 and P-384 curves.
+  \item The \emph{Key} field retains its role as the card’s reference identifier. PDs \textbf{SHALL NOT} reinterpret or remap the identifier.
+  \item For RSA algorithms (\texttt{0x05}, \texttt{0x06}, \texttt{0x07}), the \emph{Challenge} field carries the datum to be signed. The PD forwards the value unmodified; padding (for example PKCS\#1 v1.5 or PSS) is the responsibility of the ACU.
+  \item For AES algorithms (\texttt{0x08}, \texttt{0x0A}, \texttt{0x0C}), the \emph{Challenge} field contains the plaintext block(s) to be encrypted. PDs \textbf{SHALL} send the data to the credential without padding; ACUs \textbf{SHALL} provide data aligned to the block size dictated by the selected key length and card profile.
+  \item For algorithms \texttt{0x11} and \texttt{0x14}, the \emph{Challenge} field conveys the peer public key. The PD \textbf{SHALL} issue \texttt{GENERAL AUTHENTICATE} with \texttt{CLA = 0x00} (or \texttt{0x0C} when a secure channel is active), \texttt{INS = 0x87}, \texttt{P1 = Algorithm}, and \texttt{P2 = Reference Identifier}. The command data \textbf{SHALL} be encoded as \texttt{7C Len 82 00 85 Len (04 || X || Y)}, where \texttt{X} and \texttt{Y} are the uncompressed coordinates for the selected curve and are left-padded with \texttt{0x00} as required. The credential performs elliptic-curve Diffie–Hellman in accordance with SP~800-73; the derived secret is returned in the reply fragments described below.
+\end{itemize}
+
+\input{tables/osdp-crauth}
+
+\subsubsection{Response to Challenge (osdp\_CRAUTHR)}
+
+The reply continues to use the OSDP~2.2 multi-part format. Successful execution yields a response containing the credential’s entire \texttt{GENERAL AUTHENTICATE} data (minus the ISO/IEC~7816 status word); PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths. If the credential reports an error, the PD \textbf{SHALL} return \texttt{osdp\_NAK} using the appropriate code from the standard set (for example \texttt{0x01} security condition not met, \texttt{0x02} card removed, \texttt{0x03} PIN blocked, \texttt{0x04} wrong interface, \texttt{0x05} incorrect parameter, \texttt{0x06} PIN verification failed, \texttt{0x07} PIN verification timeout, \texttt{0x09} unsupported algorithm/reference, \texttt{0x0A} general authentication failure).
+
+\input{tables/osdp-crauthr}
+
 \subsubsection{Get PIV Data (osdp\_PIVDATA)}
 
 OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a PIV object and optional element. The original text did not explicitly specify how to pad identifiers shorter than three bytes, how nested tags should be returned, or how to interpret the data offset. OSDP~2.3 clarifies these behaviors so that ACUs and PDs apply a single normative approach.
@@ -44,17 +64,13 @@ The following \texttt{osdp\_NAK} error codes are introduced by the Enhanced PIV 
     0x0C & Insufficient credential memory or storage space. \\\hline
     0x0D & Security status not satisfied. \\\hline
     0x0E & Data object or tag not found. \\\hline
+    0x0F & VCI not established. \\\hline
+    0x10 & PIV Auto not configured. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}
 
 \subsection{Updated Function Codes}
-
-\subsubsection{Function Code 12 – Smart Card Support}
-
-Two additional capability flags are introduced for Function Code~12. Devices that advertise support for the Enhanced PIV profile \textbf{SHALL} set Bit~2 (mask \texttt{0x04}). Devices that implement autonomous PIV operation, as defined in the OSDP~2.3 proposal, \textbf{SHALL} set Bit~3 (mask \texttt{0x08}). Bits~0 and 1 retain their legacy meaning (transparent reader mode and extended packet mode respectively). All other bits remain reserved and \textbf{SHALL} be transmitted as zero.
-
-\input{tables/function-code-12}
 
 \subsubsection{Function Code 13 – Reader Interfaces}
 
@@ -73,12 +89,19 @@ When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance b
     \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
     0x01 & PD presents a contact card interface (ISO~7816 or equivalent). \\\hline
     0x02 & PD presents a high-frequency contactless credential interface (13.56~MHz NFC). \\\hline
-    0x04 & PD presents a low-frequency credential interface (approximately 125~kHz prox). \\\hline
-    0x08 & PD presents a Bluetooth credential interface. \\\hline
-    0x10 & PD presents a barcode credential interface. \\\hline
-    0x20 & PD presents an ultra-high-frequency credential interface (UHF/RAIN RFID). \\\hline
-    0x40 & PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes. \\\hline
+    0x04 & PD supports the OSDP~2.3 Enhanced PIV command set (including \texttt{osdp\_CRAUTH}, \texttt{osdp\_PIVDATA}, \texttt{osdp\_CARDSTATUS}, and \texttt{osdp\_PIVMODE}). \\\hline
+    0x08 & PD presents a low-frequency credential interface (approximately 125~kHz prox). \\\hline
+    0x10 & PD presents a Bluetooth credential interface. \\\hline
+    0x20 & PD presents a barcode credential interface. \\\hline
+    0x40 & PD presents an ultra-high-frequency credential interface (UHF/RAIN RFID). \\\hline
+    0x80 & PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}
-\noindent All other bits are reserved for future use and \textbf{SHALL} be transmitted as zero.
+\noindent All other bits are reserved for future use and \textbf{SHALL} be transmitted as zero. PDs \textbf{SHALL} set Bit~\texttt{0x04} when they implement the OSDP~2.3 PIV Mode TLV format and the associated automated flows described in Section~\ref{sec:pivmode}.
+
+\subsubsection{Function Code 14 – Biometric Support}
+
+Function Code~14 remains backward compatible with OSDP~2.2. A compliance value of \texttt{0x00}, \texttt{0x01}, \texttt{0x02}, or \texttt{0x03} retains its original meaning and indicates that the PD does not support the OSDP~2.3 biometric command set. Devices that support the enhanced commands \textbf{SHALL} set Bit~7 (\texttt{0x80}). When Bit~7 is asserted, the remaining bits of the compliance byte are interpreted as a capability bitfield. Bits not explicitly defined in Table~\ref{tab:function-code-14-flags} are reserved and \textbf{SHALL} be transmitted as zero.
+
+\input{tables/function-code-14}

@@ -1,0 +1,9 @@
+\begin{PacketTable}{Card Status Reply (osdp\_CARDSTATUSR)}
+  \PacketRow{1}{CMND}{Reply identifier.}{TBA}
+  \PacketRow{1}{Detected Credential Type}{Current card interface: \texttt{0x00} none, \texttt{0x01} ISO~7816 contact, \texttt{0x02} ISO~14443 contactless, \texttt{0x03} other ISO~7816 credential (for example DESFire, Seos), \texttt{0x04} low-frequency credential, \texttt{0x05} unknown type, \texttt{0x06}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use.}{0x00--0xFF}
+  \PacketRow{1}{VCI Status}{\texttt{0x00} VCI not established, \texttt{0x01} VCI established. Values \texttt{0x02}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use.}{0x00--0xFF}
+  \PacketRow{1}{VCI Trust Anchor ID}{Identifier of the trust anchor used to establish VCI. \texttt{0x00} indicates no anchor in use.}{0x00--0xFF}
+  \PacketRow{2}{PIN Usage Policy}{PIN Usage Policy bytes (tag \texttt{0x5F2F}) returned verbatim when available. A value of \texttt{0xFFFF} indicates the policy is not present or has not yet been read.}{0x0000--0xFFFF}
+  \PacketRow{1}{Selected AID Length}{Length (0--16) of the selected AID. \texttt{0x00} indicates no application is currently selected.}{0x00--0x10}
+  \PacketRow{0--16}{Selected AID}{Application Identifier read from the credential (for example from the FCI template). Present only when the length is non-zero.}{0x00--0xFF}
+\end{PacketTable}

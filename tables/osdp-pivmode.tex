@@ -1,0 +1,9 @@
+\begin{PacketTable}{Set PIV Mode (osdp\_PIVMODE)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{PIV Mode Flags}{Global behaviour flags (Section~\ref{sec:pivmode}).}{0x00--0xFF}
+  \PacketRow{2}{MpSizeTotal}{Total size of the complete configuration payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{MpOffset}{Offset of this fragment within the configuration payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{MpFragmentSize}{Length of the fragment payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{1}{Config Count}{Number of configuration entries (1--32).}{0x01--0x20}
+  \PacketRow{0--n}{TLV Data}{Sequence of configuration descriptors: optional Global Interface Mask TLV (Tag \texttt{0x10}) followed by one or more Configuration Entry TLVs (Tag \texttt{0x01}).}{--}
+\end{PacketTable}

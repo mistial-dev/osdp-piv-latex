@@ -1,0 +1,877 @@
+<Proposed New OSDP Commands to support FICAM compliant PIV operability
+01 October 2025
+Kevin Booth, Bryan Walker
+Kate Gray, Babak Javadi
+
+Rev  9.0
+
+Changes:
+05/27/25 – New codes for Functions 13 & 14.
+	•	Change osdp_PIVBIOMATCH to use single byte to indicate biometric type.
+
+06/25/25 – Changes to support multi-AID usage and VCI
+
+07/09/25 – Changes for PIV CVC
+
+07/17/25 – PUT DATA, GET DATA
+
+09/03/25 –  Added additional error codes for osdp_CRAUTHR.  Added additional status codes for osdp_PIVSPE.  Added additional fields and clarification to osdp_PIVSPE.  Added AID options to proposal.  Added examples of AID to proposal.
+
+09/17/25 – Overhaul of PIV Mode command and values.  Major SPE changes.
+
+Osdp_PDCAP – Reply to Peripheral Device Capabilities Request
+
+	Add bit fields to existing function definitions to indicate support for new commands
+
+Function code 12 - Smart Card Support:
+	•	Add bit 2 (mask 0x04) to indicate support for 2.3 style osdp_CRAUTH, osdp_PIVDATA, osdp_CARDSTATUS, and osdp_PIVMODE commands.
+
+Function code 13 - Readers. 
+Currently unused, Version 2.2 says compliance level must be 0x00.  
+	•	0x01 indicates contact card reader
+	•	0x02 indicates contactless card reader
+	•	0x04 indicates support for 125khz Prox.
+	•	0x08 indicates support for VCI.
+
+
+Function Code 14 – Biometrics:
+This capability indicates the ability of the reader to handle PIV credentials.
+Compliance levels are defined as a bit field:
+b8
+b7
+b6
+b5
+b4
+b3
+b2
+b1
+Meaning
+0
+0
+0
+0
+0
+0
+0
+0
+PD does not support biometric OSDP Modern PIV commands.
+0
+-
+-
+-
+-
+-
+-
+-
+PD operating in legacy pre OSDP 2.3 biometric support mode.
+1
+-
+-
+-
+-
+-
+-
+-
+PD supports new biometric commands as defined in this chart.
+-
+-
+-
+-
+-
+-
+-
+1
+PD supports FIPS 201 BIO ANSI INCITS378 off-card fingerprint comparison.
+-
+-
+-
+-
+-
+-
+-
+0
+PD does not support FIPS 201 BIO ANSI INCITS378 off-card fingerprint comparison.
+-
+-
+-
+-
+-
+-
+1
+-
+PD supports FIPS 201 OCC on-card fingerprint comparison
+-
+-
+-
+-
+-
+-
+0
+-
+PD does not support FIPS 201 OCC on-card fingerprint comparison
+-
+-
+-
+-
+-
+1
+-
+-
+PD supports FIPS 201 BIO off-card iris comparison
+-
+-
+-
+-
+-
+0
+-
+-
+PD does not support FIPS 201 BIO  off-card fingerprint comparison
+-
+-
+-
+-
+1
+-
+-
+-
+PD supports ANSI INCITS 385-2004 off-card facial comparison using cardholder image stored on-card.
+-
+-
+-
+-
+0
+-
+-
+-
+PD does not support ANSI INCITS 385-2004 off-card facial comparison using cardholder image stored on-card.
+-
+X
+X
+X
+-
+-
+-
+-
+RFU
+
+	•	
+	•	
+	•	
+	•	
+
+Function Code 15 – Secure PIN Entry
+	•	Add 0x02 to indicate support for 2.3 style osdp_SPE command
+
+	
+
+osdp_CRAUTHR: reply to osdp_CRAUTH
+
+Add error codes to report a failure of the command or an error condition
+
+Packet format field
+Name
+Code
+Description
+CMND
+0x82
+osdp_CRAUTHR
+
+
+
+
+
+DATA[0]
+TOTAL LSB
+0x00 – 0xFF
+Whole Message
+Length
+
+TOTAL MSB
+0x00 – 0xFF
+
+
+OFFSET LSB
+0x00 – 0xFF
+Offset within
+Whole message
+
+OFFSET MSB
+0x00 – 0xFF
+
+
+Data Length LSB
+0x00 – 0xFF
+Length of 
+This segment
+
+Data Length MSB
+0x00 – 0xFF
+
+DATA[6]
+AUTH DATA or Error Code
+0x00 – 0xFF
+Challenge Response
+
+Error Codes:
+	0x01 - Security Condition not met – PIN verification was required
+	0x02 - Card removed/no card present
+0x03 - Card is PIN Blocked.
+0x04 - Wrong card interface
+0x05 - Incorrect Command Parameter
+0x06 – PIN verification failed
+0x07 – PIN verification timeout.
+0x08 – Data object not found (supersedes legacy PIVDATA)
+0x09 – Unsupported algorithm or key reference
+0x0A – General authentication failure
+0x0B – 0x7F – RFU
+0x80 – 0xFF – Private use
+
+
+
+osdp_PIVMODE- Set PIV operating mode
+Defines the operating context for subsequent PIV/TWIC/CAC transactions. This revision replaces the fixed “Application + AID” fields with a TLV list of application descriptors. Each descriptor packs the data model and interface selection into a single byte and optionally supplies an explicit AID. Parameters persist until changed by a new osdp_PIVMODE.
+Replies
+	•	ACK: Configurations accepted and applied
+	•	NAK 0x03: Unknown Command Code - command not supported
+	•	NAK 0x05: Incorrect Parameter - invalid TLV structure, unknown Data Model, or unsupported interface
+	•	NAK 0x06: Communication Security Conditions not met
+	•	NAK 0x07: Multi-part message error
+Packet format field
+Code
+Name
+Description
+CMND
+0xAC
+osdp_PIVMODE
+
+DATA[0]
+0x00-0xFF     
+PIV Mode Flags
+See PIV Mode Flags table
+
+
+
+
+
+
+
+
+
+
+
+
+
+DATA[1-2]
+0x0000-0xFFFF
+MpSizeTotal
+Total size of complete message (LSB first)
+DATA[3-4]
+0x0000-0xFFFF
+MpOffset
+Offset within complete message (LSB first)
+DATA[5-6]
+0x0000-0xFFFF
+MpFragmentSize
+Size of data in this fragment (LSB first)
+DATA[7]
+0x01-0x20
+Config Count
+Number of configurations (1-32)
+DATA[8…]
+Variable
+TLV Data
+Configuration Entries
+
+PIV Mode Flags
+Bit
+Value
+Description
+0
+0x01
+Enable Autonomous PIV (HSAP) mode
+1
+0x02
+Permit VCI usage when available
+2
+0x04
+FICAM strict mode (PIV applications only)
+3-7
+0xF8
+RFU (Set to 0)
+TLV Configuration Structure
+Field
+Size
+Description
+Tag
+1 byte
+0x01 (Configuration Entry)
+Length
+1 byte
+Total length of value portion (3 + AID Length)
+Data Model
+1 byte
+Application type
+Interface
+1 byte
+Interface Specifier
+AID Length
+1 byte
+Length of Application Identifier (5-16 bytes)
+AID
+Variable
+Application Identifier
+Data Model Values
+Value
+Description
+0x00
+Reserved
+0x01
+PIV (NIST SP 800-73)
+0x02
+TWIC
+0x04-0x7F
+RFU (Set to 0)
+0x80-0xFF
+Private Use
+Interface Specifier
+Value
+Description
+0x00
+Any available interface
+0x01
+Contact (ISO 7816)
+0x02
+Contactless (ISO 14443)
+0x04-0x7F
+RFU (Set to 0)
+0x80-0xFF
+Private Use
+
+Operational notes
+	•	Processing Order: PD attempts configurations in the order provided. First configuration has highest preference.
+	•	VCI: If PIV Mode Flags include VCI, PD may use VCI for contactless PIN-protected operations where permitted.
+	•	Persistence: Settings apply to all subsequent CRAUTH, PIVSPE, PIVGETDATA/PUTDATA, and biometric commands until a new PIVMODE is received.
+osdp_CARDSTATUS – Request Current Card status
+This command instructs the PD to return information related to the currently active card.
+Packet format field
+Code
+Name
+Meaning
+CMND
+0xA8
+osdp_CARDSTATUS
+
+DATA 
+0x01 – 0xFF
+Status type
+0x01 – Send standard PIV card status.
+0x02 to 0x7F – RFU
+0x80 to 0xFF – Reserved for private use
+
+
+osdp_CARDSTATUSR - Card Status Reply
+Sent as a response to a Card Status command (osdp_CARDSTATUS). 
+Packet format field
+Code
+Name
+CMND
+0x85
+osdp_CARDSTATUSR
+1 byte
+0x00- No card present
+0x01- 7816 Contact card is present
+0x02- ISO14443A Contactless card is present
+0x03 – Other ISO 7816 Credential Present (e.g. DESFire, Seos)
+0x04- Low Frequency Credential is Present
+0x05-Unknown card type is present 
+0x06to 0x7F – RFU
+0x80 to 0xFF – Reserved for private use
+Detected Card Type
+1 byte
+0x01 – Card known to support OCC 0x02 – Card known to support VCI
+
+Card Capabilities
+1 byte
+Selected AID Length (0-16, 0=None)
+Current Selected App Len
+Variable [0-16]
+Selected AID (if any) (from FCI, if present)
+
+
+
+osdp_PIV_SENDTPK – Send TWIC TPK
+
+Transmits a TWIC TPK to the PD.  This allows the reader to perform biometric matching through the contactless interface of the TWIC.   The PD will cache this TPK for use with the next osdp_PIVBIOMATCH command.  
+
+Response to this command is ACK or NAK with an error code of 0x03 Unknown Command Code.
+
+Packet format field
+Code
+Name
+Meaning
+CMND
+0xAB
+osdp_PIV_SENDTPK
+
+0x20 BYTES
+DATA[]
+Cardholder TPK 
+
+
+
+osdp_PIV_VCILOADTA – Transmit VCI Trust Anchor to Reader
+
+Transmits a VCI Trust Anchor to a PD for future Virtual Contact Interface establishment.  This is cached for future osdp_ESTABLISH_VCI commands and is retained unless cleared.  When VCI is initiated, the reader is responsible for verifying the Card Verifiable Certificate prior to sending the VCI pairing code.
+
+PDs implementing VCI MUST support at least one trust anchor and trust anchor storage pace of at least 4,096 bytes.  PDs MAY permit the loading of up to 128 trust anchors.  Any loaded trust anchor may be used by any presented credential.
+
+If a PD is unable to accommodate loading a trust anchor of the given number or size, it SHALL return osdp_NAK with an error indicating the reason.
+
+Due to the size of trust anchors, this is a multi-part message.
+
+Packet format field
+Code
+Name
+Meaning
+CMND
+0xAC
+osdp_PIV_VCILOADTA
+
+2 BYTES
+0x00-0xFF
+MpSizeTotal (LSB)
+Total size of the trust anchor
+
+0x00-0xFF
+MpSizeTotal (MSB)
+
+2 BYTES
+0x00-0xFF
+MpOffset (LSB)
+Byte offset of the fragment in this trust anchor
+
+0x00-0xFF
+MpOffset (MSB)
+
+2 BYTES
+0x00-0xFF
+MpFragmentSize (LSB)
+Number of bytes of data in this fragment
+
+0x00-0xFF
+MpFragmentSize (MSB)
+
+1 BYTE
+0x01-0x08
+Trust Anchor ID
+Trust Anchor Identifier
+DATA[]
+0x00-0xFF
+Trust Anchor Data
+Trust Anchor
+
+osdp_PIV_VCITASTATUS – Request Current VCI status
+This command instructs the PD to return information related to the currently loaded VCI Trust Anchors
+Packet format field
+Code
+Name
+Meaning
+CMND
+0x78
+osdp_PIV_VCITASTATUS
+
+
+
+
+osdp_PIV_VCITASTATUSR
+Packet format field
+Code
+Name
+Meaning
+CMND
+0xAD
+osdp_PIV_VCITASTATUSR
+
+2 BYTES
+0x00-0xFF
+MpSizeTotal (LSB)
+Total size of the trust anchor
+
+0x00-0xFF
+MpSizeTotal (MSB)
+
+2 BYTES
+0x00-0xFF
+MpOffset (LSB)
+Byte offset of the fragment in this trust anchor
+
+0x00-0xFF
+MpOffset (MSB)
+
+2 BYTES
+0x00-0xFF
+MpFragmentSize (LSB)
+Number of bytes of data in this fragment
+
+0x00-0xFF
+MpFragmentSize (MSB)
+
+1 BYTE
+0x00-0x01
+Can Accept More
+0x00 – Cannot accept more trust anchors
+0x01 – Can accept at least one more trust anchor
+2 BYTES
+0x00-0xFF
+Available Space (LSB)
+Available space in bytes for additional trust anchors (LSB first)
+
+0x00-0xFF
+Available Space (MSB)
+
+1 BYTE
+0x00-0x7F
+Anchor Count
+Number of installed trust anchor (0-127)
+1 BYTE
+0x01-0x08
+Fragment Data
+Repeated for each installed trust anchor:
+- 1 byte: Trust Anchor ID (1-8)
+- 1 byte: IIN (Issuer Identification Number)
+- 2 bytes: Trust Anchor Size (LSB first)
+
+
+osdp_PIVSPE – PIV Secure Pin Entry
+
+This command instructs the PD to perform the PIV VERIFY CARD command to validate the cardholder PIN on-card. Keypresses entered in response to this command must not be transmitted to the ACU. The ACU is responsible for indicating to the user, in a distinct and unambiguous manner, that the PD is operating in Secure PIN Entry (SPE) mode. The specifics of this indication (e.g., display text, LED/buzzer patterns, UI messages) are outside the scope of this standard.
+While in SPE mode, the PD must suppress all osdp_KEYPAD reports to the ACU. SPE mode terminates after a result is returned via osdp_PIVSPER. For 2.3 PIV, CRAUTH transactions that require PIN verification should rely on successful SPE execution before proceeding.  The ACU should not send other PIV commands until SPE has succeeded or failed.
+@todo callout to not do implicit after this, acu to wait for PIV for success or failure
+Packet format field
+Code
+Name
+
+CMND
+0xA9
+osdp_PIVSPE
+
+DATA[0]
+0x00-0xFF
+SPE Mode
+See SPE Mode table
+DATA[1]
+0x00-0xFF
+Start Timeout
+Maximum seconds to start PIN entry (ignored if Mode=0x00)
+DATA[2]
+0x00-0xFF 
+
+
+Inter-key Timeout
+Maximum seconds between keystrokes (ignored if Mode=0x00)
+DATA[3]
+0x00-0xFF
+Flags
+See SPE Flags table
+DATA[4-5]
+0x0000-0xFFFF
+Cache Validity
+PIN cache validity in seconds (LSB first, 0=no caching)
+
+SPE Mode Values
+Value
+Description
+0x00
+Status Only - Return current SPE status without changes
+0x01
+Normal - Single PIN verification with card present (Contact)
+0x02
+VCI Pre-Cache - Collect PIN before card presentation for VCI
+0x03
+VCI Execute - Execute PIN verification over VCI with cached PIN
+0x04
+PIN Caching - Cache PIN for subsequent operations (non-FICAM)
+0x05
+Clear/Abort - Clear cached PIN and/or abort current operation
+0x06-0x7F
+RFU (Set to 0)
+0x80-0xFF
+Private Use
+
+SPE Flag Values
+Bit
+Value
+Description
+0
+0x01
+Allow retry continuation if card still present (pin entry failure)
+1
+0x02
+Require explicit cache clear (don't auto-clear on card removal)
+2
+0x04
+Force skip pairing code verification (card allows VCI without pairing)
+3
+0x08
+Auto-execute VCI verify when card presented (with Mode 0x02)
+4-7
+0xF0
+RFU (Set to 0)
+
+osdp_PIVSPER  - PIV Secure PIN Entry Reply
+Sent as a poll response to report the result of the previous PIV Secure PIN Entry command.
+Packet format field
+Code
+Name
+CMND
+0x86
+osdp_PIVSPER
+DATA[0]
+0x00 – Success: PIN verified
+0x01 – Timeout: PIN not started
+0x02 – Timeout: inter-digit
+0x03 – PIN mismatch
+0x04 – Card removed
+0x05 – Card blocked
+0x06 – Wrong interface
+0x07 – Incorrect parameters
+0x08 – Security condition not met
+@todo RFU and RFP
+Result
+DATA[1]
+0x0X  - Match attempts remaining if result is PIN mismatch else RFU.
+
+
+osdp_PIVBIOMATCH – Perform PIV Biometric Match to Card Template.
+
+Instructs the PD to acquire and match a live biometric to the indicated template in the current card application.  Response to this command is ACK or NAK with error code 0x03 Unknown Command if the PD does not support the command, or 0x07 (BIO_TYPE not supported) if either the PD or Credential is unable to perform the requested operation.
+
+
+Packet format field
+Code
+Name
+Meaning
+CMND
+0xAA
+osdp_PIVBIOMATCH
+
+DATA[0]
+0x01 – Card Holder Fingerprint
+0x02 – Card Holder Facial Image
+0x04 – Card Holder Iris
+
+Biometric template Object ID
+DATA[1]
+0x00 – Off Card Bio Match
+0x01 – On Card Match
+Match Mode
+
+osdp_PIVBIOMATCHR  - PIV BiometricMatch Reply
+Sent as a poll response to report the result of the previous osdp_PIVBIOMATCH command.
+The PD returns the result of the biometric match attempt and if the match was successful, a 32 byte
+SHA-256 Hash of the date field of the biometrictag (0xBC) data.  If the match was not successful, 
+only the result code is sent.
+
+Packet format field
+Code
+Name
+CMND
+0x87
+osdp_PIVBIOMATCHR
+DATA[0]
+0x00 – Biometric match success, No error.
+0x01 – Biometric match timeout.
+0x02 – Biometric match fail.
+0x03 – Card removed/no card present.
+0x04 – PIN verification required.
+0x05 – PIN verification failed.
+0x06 – PIN verification timeout.
+0x07 – CHUID Mismatch
+0x08– PD error during biometric scan entry
+0x09 – On Card Match Success
+0x09 to0x7F – RFU
+0x80 to 0xFF – Reserved for private use
+Error Code
+DATA[1-33]
+32 byte SHA-256 Hash of the data field of biometric tag 0xBC
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+osdp_ESTABLISH_VCIR – Poll response after VCI establishment attempt 
+Packet format field
+Code
+Name
+CMND
+0xAF
+osdp_PIVBIOMATCHR
+DATA[0]
+0x00 – VCI successfully established, pairing code correct
+0x01 – Secure channel established, pairing code incorrect
+0x02 – Secure channel not established, no trust anchor found
+0x03 – Credential does not support VCI
+0x04 – Other or unknown error
+Error Code
+DATA[1]
+0x00 – Secure channel was not established
+0x01-0x08 – Trust anchor identifier
+
+Which trust anchor was selected
+
+osdp_PIVPUTDATA
+Instructs the PD to initiate an ISO7816-4/PIV “PUT DATA” command to the credential.
+
+Packet format field
+Code
+Name
+Meaning
+CMND
+0x6F
+osdp_PIVPUTDATA
+
+DATA[0]
+0x00-0x02
+Command Mode
+0x00 – Standard (CLA=0x00)
+0x01 – VCI (CLA=0x0C)
+0x02 – DESFire (CLA=0x90)
+DATA[0]
+0x00-0xFF
+File ID/P1
+First byte of File ID
+DATA[0]
+0x00-0xFF
+File ID/P2
+Second byte of File ID
+DATA[0]
+0x00-0xFF
+MpSizeTotal (LSB)
+Total size of data to write
+DATA[0]
+0x00-0xFF
+MpSizeTotal (MSB)
+
+DATA[0]
+0x00-0xFF
+MpOffset (LSB)
+Byte offset of this fragment
+DATA[0]
+0x00-0xFF
+MpOffset (MSB)
+
+DATA[0]
+0x00-0xFF
+MpFragmentSize (LSB)
+Size of data in this fragment
+DATA[0]
+0x00-0xFF
+MpFragmentSize (MSB)
+
+DATA[9..]
+0x00-0xFF
+Data
+Data to write
+
+osdp_PIVPUTDATAR
+Poll reply after performing osdp_PIVPUTDATA:
+Packet format field
+Code
+Name
+Meaning
+CMND
+0x70
+osdp_PIVPUTDATAR
+
+DATA[0]
+0x00 – Success
+0x01 – Security condition not satisfied
+0x02 – Card removed/no card present
+0x03 – Incorrect command parameter
+0x04 – Data object not found
+0x05 – Data exceeds available size
+0x06 - 0x7F – RFU
+0x80-0xFF – Private use
+
+Result Code
+
+osdp_PIVGETDATA
+Instructs the PD to initiate an ISO7816-4/PIV “GET DATA” command to the card.
+Packet format field
+Code
+Name
+Meaning
+CMND
+0x71
+osdp_ PIVGETDATA
+
+DATA[0]
+0x00 – Standard (CLA=0x00)
+0x01 – VCI (CLA=0x0C)
+0x02 – DESFire (CLA=0x90)
+
+Command Mode
+DATA[1]
+File ID P1
+First byte of File ID
+DATA[2]
+File ID P2
+Second byte of File ID
+ Practical Guidance:
+	•	Per ISO 7816 Leading zeroes (in PIV-OBJECT-ID 1st and/or 2nd bytes) SHALL NOT be transmitted by the reader.  For example, the Biometric Information Templates Group Template (id 0x7F61) would be specified as 0x007F61 in osdp_PIVGETDATA but sent to the card as 0x7F61 in the APDU.
+	•	The PIN Usage Policy (in the discovery object), biometric fingerprint templates (in the BIT Group Template object), and Intermediate CVC (in the Secure Messaging Certificate Signer object) have elements with two byte tags.  To retrieve this information, the entire PIV Data Object must be returned.
+For missing or unpopulated data objects, PIV credentials may return a Status Word of 6982 
+osdp_PIVGETDATAR
+Poll reply after performing osdp_PIVGETDATA:
+Packet format field
+Code
+Name
+Meaning
+CMND
+0x72
+osdp_PIVPUTDATAR
+
+DATA[0]
+0x00 – Success
+0x01 – Security condition not satisfied
+0x02 – Card removed/no card present
+0x03 – Incorrect command parameter
+0x04 – Data object not found
+0x05 - Other Error
+0x06 - 0x7F – RFU
+0x80-0xFF – Private use
+
+Result Code
+DATA[1]
+MpSizeTotal (LSB)
+Total size of data read
+DATA[2]
+MpSizeTotal (MSB)
+
+DATA[3]
+MpOffset (LSB)
+Byte offset of this fragment
+DATA[4]
+MpOffset (MSB)
+
+DATA[5]
+MpFragmentSize (LSB)
+Size of data in this fragment
+DATA[6]
+MpFragmentSize (MSB)
+
+DATA[7..]
+Data
+Retrieved data (if success)
+

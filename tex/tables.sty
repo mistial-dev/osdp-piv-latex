@@ -1,48 +1,47 @@
-\ProvidesPackage{tables}[2025/10/29 OSDP table helpers]
+\ProvidesPackage{tables}[2025/10/30 OSDP table helpers]
 
 \RequirePackage{array}
 \RequirePackage{xcolor}
 \RequirePackage{colortbl}
+\RequirePackage{caption}
+
+\captionsetup[table]{font={bf,Large},labelfont={bf,Large},skip=1.2em}
 
 \definecolor{PacketHeaderBg}{HTML}{101010}
 \definecolor{PacketHeaderFg}{HTML}{FFFFFF}
 
-\newlength{\PacketSizeCol}
-\newlength{\PacketNameCol}
-\newlength{\PacketMeaningCol}
-\newlength{\PacketValueCol}
+\newlength{\PacketSizeCol}\setlength{\PacketSizeCol}{1.9cm}
+\newlength{\PacketNameCol}\setlength{\PacketNameCol}{4.0cm}
+\newlength{\PacketMeaningCol}\setlength{\PacketMeaningCol}{7.2cm}
+\newlength{\PacketValueCol}\setlength{\PacketValueCol}{3.4cm}
 
-\setlength{\PacketSizeCol}{1.4cm}
-\setlength{\PacketNameCol}{3.0cm}
-\setlength{\PacketMeaningCol}{8.0cm}
-\setlength{\PacketValueCol}{3.1cm}
+\newcommand{\PacketCellSize}[1]{\parbox[t]{\PacketSizeCol}{\centering #1}}
+\newcommand{\PacketCellName}[1]{\parbox[t]{\PacketNameCol}{\raggedright #1}}
+\newcommand{\PacketCellMeaning}[1]{\parbox[t]{\PacketMeaningCol}{\raggedright #1}}
+\newcommand{\PacketCellValue}[1]{\parbox[t]{\PacketValueCol}{\raggedright #1}}
 
-\newcommand{\PacketTableStart}[1]{%
-  \setlength{\tabcolsep}{8pt}%
+\newenvironment{PacketTable}[1]{%
+  \setlength{\tabcolsep}{6pt}%
   \renewcommand{\arraystretch}{1.35}%
   \begin{table}[ht]
     \centering
     \caption{#1}
-    \begin{tabular}{|>{\centering\arraybackslash}p{\PacketSizeCol}|>{\raggedright\arraybackslash}p{\PacketNameCol}|>{\raggedright\arraybackslash}p{\PacketMeaningCol}|>{\raggedright\arraybackslash}p{\PacketValueCol}|}
+    \begin{tabular}{|p{\PacketSizeCol}|p{\PacketNameCol}|p{\PacketMeaningCol}|p{\PacketValueCol}|}
       \hline
       \rowcolor{PacketHeaderBg}
-      \textcolor{PacketHeaderFg}{\bfseries Size (bytes)} &
-      \textcolor{PacketHeaderFg}{\bfseries Name} &
-      \textcolor{PacketHeaderFg}{\bfseries Meaning} &
-      \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
-}
-
-\newcommand{\PacketTableEnd}{%
+      \PacketCellSize{\textcolor{PacketHeaderFg}{\bfseries Size (bytes)}} &
+      \PacketCellName{\textcolor{PacketHeaderFg}{\bfseries Name}} &
+      \PacketCellMeaning{\textcolor{PacketHeaderFg}{\bfseries Meaning}} &
+      \PacketCellValue{\textcolor{PacketHeaderFg}{\bfseries Value}} \\\hline
+}{%
     \end{tabular}
   \end{table}
 }
 
-\newcommand{\PacketRow}[4]{#1 & #2 & #3 & #4\\\hline}
-
-\newcommand{\PacketTableFromFile}[2]{%
-  \PacketTableStart{#2}%
-  \input{#1}%
-  \PacketTableEnd
-}
+\newcommand{\PacketRow}[4]{
+  \PacketCellSize{#1} &
+  \PacketCellName{#2} &
+  \PacketCellMeaning{#3} &
+  \PacketCellValue{#4} \\\hline}
 
 \endinput

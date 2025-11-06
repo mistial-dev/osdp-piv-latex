@@ -1,7 +1,9 @@
 \section{Packet Format}
 
-The packet layout uses a structured table generated from a CSV file. Update the CSV in `tables/packet-format.csv`; no LaTeX changes are required.
+The packet layout uses a structured table generated from a reusable snippet. Update the rows in `tables/packet-format.tex`; no LaTeX styling changes are required.
 
-\PacketTableFromFile{tables/packet-format.tex}{Table 1 -- Packet Format}
+\begin{PacketTable}{Table 1 -- Packet Format}
+  \input{tables/packet-format.tex}
+\end{PacketTable}
 
 The accompanying notes appear in Appendix~\ref{app:notes}.

@@ -1,0 +1,12 @@
+\section{Sample \texttt{osdp\_PIVDATA} Requests (Informative)}
+\label{app:pivdata-examples}
+
+This appendix illustrates representative requests that conforming ACUs may issue using the clarified \texttt{osdp\_PIVDATA} command. Object identifiers align with NIST SP~800-73-4 Part~2, Table~6. Each example shows the bytes that appear in the OSDP payload after the \texttt{CMND} field; the PD strips leading zeroes before constructing the ISO~7816-4 APDU.
+
+\begin{description}
+  \item[Cardholder Unique Identifier (CHUID)] Object identifier \texttt{0x5FC102}, tag \texttt{0x00}, offset \texttt{0x0000}. The PD transmits \texttt{GET DATA} for tag \texttt{0x5FC102} and returns the complete CHUID BER-TLV so the ACU can validate the FASC-N, GUID, and expiration fields.
+  \item[Card Capability Container (CCC)] Object identifier \texttt{0x5FC107}, tag \texttt{0x00}, offset \texttt{0x0000}. Use this request during device discovery to read feature flags (contact/contactless support, optional biometrics) prior to issuing PIV Mode updates.
+  \item[Discovery Object] Object identifier \texttt{0x00007E}, tag \texttt{0x00}, offset \texttt{0x0000}. The PD forwards tag \texttt{0x7E} with its nested data so the ACU can parse the application identifier (tag \texttt{0x4F}) and PIN Usage Policy (tag \texttt{0x5F2F}). To retrieve only the AID, repeat the command with tag \texttt{0x4F}.
+  \item[Biometric Information Templates (BIT) Group Template] Object identifier \texttt{0x007F61}, tag \texttt{0x00}, offset \texttt{0x0000}. Large responses for fingerprint or iris templates require multiple \texttt{osdp\_PIVDATAR} fragments; the \texttt{TOTAL}/\texttt{OFFSET}/\texttt{DATA\_LEN} fields support reconstruction.
+  \item[Selective Tag Retrieval] Object identifier \texttt{0x00007E}, tag \texttt{0x4F}, offset \texttt{0x0000}. The PD returns only the PIV Application Identifier nested inside the Discovery Object. Tags that occupy more than one byte (for example \texttt{0x7F61}) are outside the scope of this selector and must be obtained by requesting tag \texttt{0x00}.
+\end{description}

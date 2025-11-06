@@ -1,0 +1,7 @@
+\begin{PacketTable}{PIV Put Data (osdp\_PIVPUTDATA)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{2}{MpSizeTotal}{Total size of the complete PUT DATA payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{MpOffset}{Offset of this fragment within the complete payload, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{2}{MpFragmentSize}{Number of payload bytes carried in this fragment, least-significant byte first.}{0x0000--0xFFFF}
+  \PacketRow{0--n}{Data}{BER-TLV payload to be written to the credential. This field already includes the outer object tag selected by the ACU.}{0x00--0xFF}
+\end{PacketTable}

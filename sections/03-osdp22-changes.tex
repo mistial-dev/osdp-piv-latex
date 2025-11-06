@@ -1,17 +1,84 @@
 \section{Changes to OSDP 2.2}\label{sec:osdp22-changes}
 
-This section captures modifications required to bring OSDP~2.2 peripherals and control panels into conformance with the Enhanced PIV proposal. Draft content is pending review of the 2025-10-28 proposal.
+This section documents the normative deltas that apply when an OSDP~2.2 implementation adopts the Enhanced PIV profile. Each subsection references the original command definition and records the precise behavioral updates, encoding clarifications, and new error handling rules introduced by this proposal.
 
 \subsection{Updated Command Definitions}
 
-\begin{PacketTable}{Modified Commands}
-  % TODO: Populate with actual data from proposal-draft.txt
-  \PacketRow{--}{osdp\_COMMAND}{Describe the change}{Reference TBD}
-\end{PacketTable}
+\subsubsection{Get PIV Data (osdp\_PIVDATA)}
+
+OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a PIV object and optional element. The original text did not explicitly specify how to pad identifiers shorter than three bytes, how nested tags should be returned, or how to interpret the data offset. OSDP~2.3 clarifies these behaviors so that ACUs and PDs apply a single normative approach.
+
+\begin{itemize}
+  \item The ACU \textbf{SHALL} transmit the PIV Object Identifier as three bytes encoded most-significant byte first. When the identifier contains fewer than three significant bytes, the ACU \textbf{SHALL} left-pad the value with \texttt{0x00} or \texttt{0x0000}, as required, so that the transmitted field is exactly three bytes. The PD \textbf{SHALL NOT} forward those pad bytes to the credential; it \textbf{SHALL} issue the ISO~7816-4 \texttt{GET DATA} APDU using only the significant identifier bytes. If VCI secure messaging is established, the PD \textbf{SHALL} use the appropriate secure channel automatically; no explicit selector is present in the command.
+  \item The field previously described as “PIV element ID” is renamed \emph{PIV Tag}. A tag value of \texttt{0x00} directs the PD to return the complete BER-TLV structure, including the outer \texttt{0x53} or \texttt{0x73} tag and length. Any non-zero value selects a single root-level tag within the object. The PD \textbf{MUST} remove the outer wrapper only when it is \texttt{0x53} or \texttt{0x73}; if the outer wrapper has any other value, the PD \textbf{MUST} reject the command unless the tag value is \texttt{0x00}. Tags \textbf{SHALL} be a single byte in the range \texttt{0x01}--\texttt{0xFF}; multi-byte DER tags are not supported and \textbf{MUST} be retrieved by issuing a tag value of \texttt{0x00} and parsing the returned object at the ACU.
+  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_NAK} with error code \texttt{0x0D} when security prerequisites are not satisfied and \texttt{0x0E} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}.
+\end{itemize}
+
+\input{tables/osdp-pivdata}
+
+\subsubsection{PIV Data Reply (osdp\_PIVDATAR)}
+
+The reply structure is unchanged from a field-count perspective but 2.3 aligns the semantics with the command refinements above:
+
+\begin{itemize}
+  \item \texttt{TOTAL}, \texttt{OFFSET}, and \texttt{DATA\_LEN} continue to be encoded LSB first; they now explicitly report the size, fragment base, and fragment length for the content selected by the \texttt{osdp\_PIVDATA} request (entire object or chosen tag).
+  \item \texttt{CARD\_DATA} \textbf{SHALL} convey the exact bytes obtained from the credential after applying any tag stripping specified by the command. No additional framing or padding is permitted.
+\end{itemize}
+
+\input{tables/osdp-pivdatar}
+
+\subsection{New Error Codes for Enhanced PIV}\label{sec:new-piv-error-codes}
+
+The following \texttt{osdp\_NAK} error codes are introduced by the Enhanced PIV profile. They extend the set defined in OSDP~2.2 without reassigning existing values and are available to any command that requires them.
+
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{Enhanced PIV Error Codes}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Code} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
+    0x0A & Function not supported. \\\hline
+    0x0B & Insufficient PD memory to complete the requested operation. \\\hline
+    0x0C & Insufficient credential memory or storage space. \\\hline
+    0x0D & Security status not satisfied. \\\hline
+    0x0E & Data object or tag not found. \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}
 
 \subsection{Updated Function Codes}
 
-\begin{PacketTable}{Modified Function Codes}
-  % TODO: Populate with actual data from proposal-draft.txt
-  \PacketRow{--}{Function Code}{Describe the change}{Reference TBD}
-\end{PacketTable}
+\subsubsection{Function Code 12 – Smart Card Support}
+
+Two additional capability flags are introduced for Function Code~12. Devices that advertise support for the Enhanced PIV profile \textbf{SHALL} set Bit~2 (mask \texttt{0x04}). Devices that implement autonomous PIV operation, as defined in the OSDP~2.3 proposal, \textbf{SHALL} set Bit~3 (mask \texttt{0x08}). Bits~0 and 1 retain their legacy meaning (transparent reader mode and extended packet mode respectively). All other bits remain reserved and \textbf{SHALL} be transmitted as zero.
+
+\input{tables/function-code-12}
+
+\subsubsection{Function Code 13 – Reader Interfaces}
+
+OSDP~2.2 defined Function Code~13 as a reader count indicator with a compliance byte fixed at \texttt{0x00}. Enhanced PIV-capable PDs \textbf{SHALL} continue to populate the reader count field, but they MAY set bits within the compliance byte to advertise the downstream credential technologies they expose. A value of \texttt{0x00} remains valid and retains the legacy meaning of “interface presence unspecified.”
+
+When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance byte using the flags in Table~\ref{tab:function-code-13-flags}. The reader count byte continues to report the number of attached credential interfaces.
+
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{Function Code 13 Compliance Flags}
+  \label{tab:function-code-13-flags}
+  \begin{tabular}{|c|p{9cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
+    0x01 & PD presents a contact card interface (ISO~7816 or equivalent). \\\hline
+    0x02 & PD presents a high-frequency contactless credential interface (13.56~MHz NFC). \\\hline
+    0x04 & PD presents a low-frequency credential interface (approximately 125~kHz prox). \\\hline
+    0x08 & PD presents a Bluetooth credential interface. \\\hline
+    0x10 & PD presents a barcode credential interface. \\\hline
+    0x20 & PD presents an ultra-high-frequency credential interface (UHF/RAIN RFID). \\\hline
+    0x40 & PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes. \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}
+\noindent All other bits are reserved for future use and \textbf{SHALL} be transmitted as zero.

@@ -15,33 +15,32 @@
 \newlength{\PacketMeaningCol}\setlength{\PacketMeaningCol}{7.2cm}
 \newlength{\PacketValueCol}\setlength{\PacketValueCol}{3.4cm}
 
-\newcommand{\PacketCellSize}[1]{\parbox[t]{\PacketSizeCol}{\centering #1}}
-\newcommand{\PacketCellName}[1]{\parbox[t]{\PacketNameCol}{\raggedright #1}}
-\newcommand{\PacketCellMeaning}[1]{\parbox[t]{\PacketMeaningCol}{\raggedright #1}}
-\newcommand{\PacketCellValue}[1]{\parbox[t]{\PacketValueCol}{\raggedright #1}}
+\newcolumntype{S}{>{\centering\arraybackslash}m{\PacketSizeCol}}
+\newcolumntype{N}{>{\raggedright\arraybackslash}m{\PacketNameCol}}
+\newcolumntype{M}{>{\raggedright\arraybackslash}m{\PacketMeaningCol}}
+\newcolumntype{V}{>{\raggedright\arraybackslash}m{\PacketValueCol}}
 
 \newenvironment{PacketTable}[1]{%
   \setlength{\tabcolsep}{6pt}%
   \renewcommand{\arraystretch}{1.35}%
-  \begin{table}[ht]
-    \centering
-    \caption{#1}
-    \begin{tabular}{|p{\PacketSizeCol}|p{\PacketNameCol}|p{\PacketMeaningCol}|p{\PacketValueCol}|}
+  \begin{samepage}%
+  \begin{center}
+    \captionsetup{type=table}%
+    \captionof{table}{#1}
+    \begin{tabular}{|S|N|M|V|}
       \hline
       \rowcolor{PacketHeaderBg}
-      \PacketCellSize{\textcolor{PacketHeaderFg}{\bfseries Size (bytes)}} &
-      \PacketCellName{\textcolor{PacketHeaderFg}{\bfseries Name}} &
-      \PacketCellMeaning{\textcolor{PacketHeaderFg}{\bfseries Meaning}} &
-      \PacketCellValue{\textcolor{PacketHeaderFg}{\bfseries Value}} \\\hline
+      \textcolor{PacketHeaderFg}{\bfseries Size (bytes)} &
+      \textcolor{PacketHeaderFg}{\bfseries Name} &
+      \textcolor{PacketHeaderFg}{\bfseries Meaning} &
+      \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
 }{%
     \end{tabular}
-  \end{table}
+  \end{center}
+  \end{samepage}
 }
 
 \newcommand{\PacketRow}[4]{
-  \PacketCellSize{#1} &
-  \PacketCellName{#2} &
-  \PacketCellMeaning{#3} &
-  \PacketCellValue{#4} \\\hline}
+  #1 & #2 & #3 & #4 \\\hline}
 
 \endinput

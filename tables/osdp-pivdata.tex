@@ -1,0 +1,10 @@
+\begin{PacketTable}{Get PIV Data (osdp\_PIVDATA)}
+  \PacketRow{1}{CMND}{Command identifier.}{0xA3}
+  \PacketRow{3}{PIV Object Identifier}{Three-byte identifier of the PIV data object per SP~800-73-4, encoded MSB first. Leading zero bytes SHALL be supplied by the ACU when the identifier is shorter than three bytes; the PD SHALL drop those pad bytes before issuing the APDU.}{0x00--0xFF\textsuperscript{1}}
+  \PacketRow{1}{PIV Tag}{Single-byte ASN.1 DER tag of a root-level element. Tag value 0x00 selects the entire object; non-zero tags select a root-level element and require the PD to strip the outer 0x53/0x73 wrapper, verify the length, and return only the tagged value. Multi-byte tags are not directly addressable and SHALL be retrieved by requesting tag 0x00.}{0x00; or 0x01--0xFF}
+  \PacketRow{1--2}{Data Offset}{Byte offset within the requested content. Single-byte and two-byte encodings SHALL be accepted; the PD determines the format from the packet length.}{0x00--0xFFFF}
+\end{PacketTable}
+
+\begin{flushleft}
+\footnotesize\textsuperscript{1}\,Each position MAY carry any value from \texttt{0x00} to \texttt{0xFF}; the ACU pads on the left with \texttt{0x00} when the identifier has fewer than three significant bytes.
+\end{flushleft}

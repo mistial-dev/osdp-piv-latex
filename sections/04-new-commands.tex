@@ -86,6 +86,8 @@ PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. 
 
 PDs are not required to maintain a real-time clock; they need only verify that credential certificates presented later fall within the trust anchor’s validity period. Implementers may perform stricter date checks if desired. PDs may retain either the full anchor blob or a compact record containing the public key, issuer identifier, validity period, and anchor number so long as the supplied IIN remains available for matching.
 
+Trust anchors may be stored in volatile or non-volatile memory at the PD’s discretion. Controllers should not assume retention beyond the device’s documented behaviour.
+
 \subsection{VCI Trust Anchor Status (osdp\_PIV\_VCITASTATUS)}
 
 The \texttt{osdp\_PIV\_VCITASTATUS} command enumerates cached trust anchors and reports remaining storage capacity. The command code is to be assigned. The request carries no payload. The reply uses the standard multi-part fields (\texttt{TOTAL}, \texttt{OFFSET}, \texttt{DATA\_LEN}) so PDs can stream the inventory across one or more fragments.
@@ -93,3 +95,21 @@ The \texttt{osdp\_PIV\_VCITASTATUS} command enumerates cached trust anchors and 
 \input{tables/osdp-vcitastatus}
 
 The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Controllers can use this information to decide whether to load additional anchors or delete existing ones. NAK responses follow the standard pattern: \texttt{0x03} for unsupported command, \texttt{0x07} for multi-part errors.
+
+\begin{table}[ht]
+  \centering
+  \caption{Trust Anchor Record Structure}
+  \label{tab:trust-anchor-record}
+  \begin{tabular}{|c|p{5cm}|p{5cm}|p{2cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Field} &
+    \textcolor{PacketHeaderFg}{\bfseries Size} &
+    \textcolor{PacketHeaderFg}{\bfseries Meaning} &
+    \textcolor{PacketHeaderFg}{\bfseries Value Range} \\\hline
+    Trust Anchor ID & 1 byte & Identifier assigned by the ACU; reused to replace or delete an anchor. & 0x00--0xFF \\\hline
+    Issuer Identifier Number (IIN) & 8 bytes & Leftmost eight bytes of the subjectKeyIdentifier from the issuing content-signing certificate. & 0x00--0xFF \\\hline
+    Anchor Length & 2 bytes (LSB first) & Total size of the stored anchor or compact representation. & 0x0000--0xFFFF \\\hline
+    Attributes & 1 byte & Reserved for future use; transmitted as zero. & 0x00 \\\hline
+  \end{tabular}
+\end{table}

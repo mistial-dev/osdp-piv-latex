@@ -1,5 +1,5 @@
 BUILD_DIR := build
-PDF := osdp-document.pdf
+PDF := osdp-piv-proposal.pdf
 LATEX := latexmk
 LATEX_OPTS := -xelatex -interaction=nonstopmode -quiet
 

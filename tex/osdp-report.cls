@@ -8,6 +8,7 @@
 \RequirePackage{xcolor}
 \RequirePackage{graphicx}
 \RequirePackage{hyperref}
+\RequirePackage{needspace}
 
 \ifPDFTeX
   \RequirePackage[T1]{fontenc}

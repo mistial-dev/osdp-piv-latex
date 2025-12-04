@@ -20,7 +20,7 @@ OSDP~2.2 transports the ISO/IEC~7816-4 \texttt{GENERAL AUTHENTICATE} command thr
 
 \subsubsection{Response to Challenge (osdp\_CRAUTHR)}
 
-The reply continues to use the OSDP~2.2 multi-part format. Successful execution yields a response containing the credential’s entire \texttt{GENERAL AUTHENTICATE} data (minus the ISO/IEC~7816 status word); PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths. If the credential reports an error, the PD \textbf{SHALL} return \texttt{osdp\_NAK} using the appropriate code from the standard set (for example \texttt{0x01} security condition not met, \texttt{0x02} card removed, \texttt{0x03} PIN blocked, \texttt{0x04} wrong interface, \texttt{0x05} incorrect parameter, \texttt{0x06} PIN verification failed, \texttt{0x07} PIN verification timeout, \texttt{0x09} unsupported algorithm/reference, \texttt{0x0A} general authentication failure).
+The reply continues to use the OSDP~2.2 multi-part format. Successful execution yields a response containing the credential’s entire \texttt{GENERAL AUTHENTICATE} data (minus the ISO/IEC~7816 status word), including the returned Dynamic Authentication Template; PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths. If the credential reports an error, the PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} with the applicable code—for example \texttt{0x20} (function not supported by credential), \texttt{0x21} (insufficient PD resources), \texttt{0x22} (insufficient credential storage), \texttt{0x23} (credential security status not satisfied), \texttt{0x24} (data object/tag not found), \texttt{0x25} (VCI not established), or \texttt{0x27} (credential not present/removed). Generic parameter/security preconditions may continue to use \texttt{0x05} (incorrect parameter) and \texttt{0x06}/\texttt{0x07} (PIN verification failed/timeout) where those codes remain canonical.
 
 \input{tables/osdp-crauthr}
 
@@ -31,7 +31,7 @@ OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a
 \begin{itemize}
   \item The ACU \textbf{SHALL} transmit the PIV Object Identifier as three bytes encoded most-significant byte first. When the identifier contains fewer than three significant bytes, the ACU \textbf{SHALL} left-pad the value with \texttt{0x00} or \texttt{0x0000}, as required, so that the transmitted field is exactly three bytes. The PD \textbf{SHALL NOT} forward those pad bytes to the credential; it \textbf{SHALL} issue the ISO~7816-4 \texttt{GET DATA} APDU using only the significant identifier bytes. If VCI secure messaging is established, the PD \textbf{SHALL} use the appropriate secure channel automatically; no explicit selector is present in the command.
   \item The field previously described as “PIV element ID” is renamed \emph{PIV Tag}. A tag value of \texttt{0x00} directs the PD to return the complete BER-TLV structure, including the outer \texttt{0x53} or \texttt{0x73} tag and length. Any non-zero value selects a single root-level tag within the object. The PD \textbf{MUST} remove the outer wrapper only when it is \texttt{0x53} or \texttt{0x73}; if the outer wrapper has any other value, the PD \textbf{MUST} reject the command unless the tag value is \texttt{0x00}. Tags \textbf{SHALL} be a single byte in the range \texttt{0x01}--\texttt{0xFF}; multi-byte DER tags are not supported and \textbf{MUST} be retrieved by issuing a tag value of \texttt{0x00} and parsing the returned object at the ACU.
-  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_NAK} with error code \texttt{0x23} when security prerequisites are not satisfied and \texttt{0x24} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}. If the credential is not present or is removed during processing, PDs may return error code \texttt{0x27}.
+  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_PIVERRORR} with error code \texttt{0x23} when security prerequisites are not satisfied and \texttt{0x24} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}. If the credential is not present or is removed during processing, PDs may return error code \texttt{0x27}.
 \end{itemize}
 
 \input{tables/osdp-pivdata}
@@ -47,9 +47,9 @@ The reply structure is unchanged from a field-count perspective but 2.3 aligns t
 
 \input{tables/osdp-pivdatar}
 
-\subsection{New Error Codes for Enhanced PIV}\label{sec:new-piv-error-codes}
+\subsection{PIV Error Codes}\label{sec:new-piv-error-codes}
 
-The following \texttt{osdp\_NAK} error codes are introduced by the Enhanced PIV profile. They extend the set defined in OSDP~2.2 without reassigning existing values and are available to any command that requires them.
+The following error codes are carried in \texttt{osdp\_PIVERRORR}. They extend the set defined in OSDP~2.2 without reassigning existing values and are available to any PIV/VCI command that requires them.
 
 \begin{samepage}
 \begin{center}
@@ -67,11 +67,26 @@ The following \texttt{osdp\_NAK} error codes are introduced by the Enhanced PIV 
     0x25 & VCI not established. \\\hline
     0x26 & PIV Auto not configured. \\\hline
     0x27 & Credential not present or removed. \\\hline
+    0x28 & Biometric type not supported. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}
 
+\subsubsection{PIV Application Error Reply (osdp\_PIVERRORR)}
+
+PDs \textbf{SHALL} use \texttt{osdp\_PIVERRORR} to report application-level errors for PIV, VCI, and TWIC commands. Error responses \textbf{MAY} carry standard OSDP codes such as \texttt{0x03} (unsupported command), \texttt{0x05} (incorrect parameter), \texttt{0x06} (secure channel required), and \texttt{0x07} (multi-part sequencing failed) alongside the PIV-specific codes in Table~\ref{sec:new-piv-error-codes}. Transport-level faults (framing, CRC, sequence) continue to use \texttt{osdp\_NAK}. No additional detail fields are defined in this profile.
+
+\input{tables/osdp-piverrorr}
+
 \subsection{Updated Function Codes}
+
+\subsubsection{Function Code 12 – Smart Card Support}
+
+Function Code~12 advertises smart-card transport capabilities and profile support at the PD. The compliance byte uses the following bit assignments:
+
+\input{tables/function-code-12}
+
+Bits not listed are reserved and \textbf{SHALL} be transmitted as zero.
 
 \subsubsection{Function Code 13 – Reader Interfaces}
 
@@ -90,16 +105,15 @@ When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance b
     \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
     0x01 & PD presents a contact card interface (ISO~7816 or equivalent). \\\hline
     0x02 & PD presents a high-frequency contactless credential interface (13.56~MHz NFC). \\\hline
-    0x04 & PD supports the OSDP~2.3 Enhanced PIV command set (including \texttt{osdp\_CRAUTH}, \texttt{osdp\_PIVDATA}, \texttt{osdp\_CARDSTATUS}, and \texttt{osdp\_PIVMODE}). \\\hline
-    0x08 & PD presents a low-frequency credential interface (approximately 125~kHz prox). \\\hline
+    0x04 & PD presents a low-frequency credential interface (approximately 125~kHz prox). \\\hline
+    0x08 & PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes. \\\hline
     0x10 & PD presents a Bluetooth credential interface. \\\hline
     0x20 & PD presents a barcode credential interface. \\\hline
     0x40 & PD presents an ultra-high-frequency credential interface (UHF/RAIN RFID). \\\hline
-    0x80 & PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}
-\noindent All other bits are reserved for future use and \textbf{SHALL} be transmitted as zero. PDs \textbf{SHALL} set Bit~\texttt{0x04} when they implement the OSDP~2.3 PIV Mode TLV format and the associated automated flows described in Section~\ref{sec:pivmode}.
+\noindent All other bits are reserved for future use and \textbf{SHALL} be transmitted as zero.
 
 \subsubsection{Function Code 14 – Biometric Support}
 

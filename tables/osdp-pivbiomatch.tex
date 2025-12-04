@@ -1,0 +1,6 @@
+\begin{PacketTable}{PIV Biometric Match (osdp\_PIVBIOMATCH)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{Biometric Type}{Selects the template type to compare. See Table~\ref{tab:pivbiomatch-types}.}{0x00--0xFF}
+  \PacketRow{1}{Match Mode}{\texttt{0x00} off-card match; \texttt{0x01} on-card match.}{0x00--0x01}
+\end{PacketTable}
+

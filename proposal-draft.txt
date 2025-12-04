@@ -379,13 +379,12 @@ CMND
 0x85
 osdp_CARDSTATUSR
 1 byte
-0x00- No card present
-0x01- 7816 Contact card is present
-0x02- ISO14443A Contactless card is present
-0x03 – Other ISO 7816 Credential Present (e.g. DESFire, Seos)
-0x04- Low Frequency Credential is Present
-0x05-Unknown card type is present 
-0x06to 0x7F – RFU
+0x00 - No card present
+0x01 - 7816 Contact card is present
+0x02 - High Frequency Contactless card is present
+0x03 - Low Frequency Credential is Present
+0x04 -Unknown card type is present
+0x05 to 0x7F – RFU
 0x80 to 0xFF – Reserved for private use
 Detected Card Type
 1 byte

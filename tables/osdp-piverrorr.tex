@@ -1,0 +1,5 @@
+\begin{PacketTable}{PIV Application Error Reply (osdp\_PIVERRORR)}
+  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+\PacketRow{1}{Error Code}{Application error or status code (Section~\ref{sec:new-piv-error-codes} or standard OSDP codes when applicable).}{0x00--0xFF}
+\PacketRow{0--n}{Error Detail}{Optional command-defined detail when explicitly specified by the invoking command; otherwise omitted.}{--}
+\end{PacketTable}

@@ -1,0 +1,120 @@
+\makeatletter
+% Random coffee stain placement across pages.
+% Configure with \SetupRandomCoffeeStains{<target page count>}{<seed or empty>}.
+
+\providecommand\coffee@lastpage{}
+
+\newcount\coffee@target
+\newcount\coffee@placed
+\newcount\coffee@total
+\newcount\coffee@needed
+\newcount\coffee@pagesleft
+\newcount\coffee@roll
+\newcount\coffee@type
+\newcount\coffee@pos
+\newcount\coffee@alpha
+\newcount\coffee@scale
+\newcount\coffee@angleadj
+
+\def\coffee@seed{}
+
+\newcommand{\SetupRandomCoffeeStains}[2]{%
+  \coffee@target=#1\relax
+  \coffee@placed=0\relax
+  \def\coffee@seed{#2}%
+  \ifx\coffee@seed\@empty
+    \edef\coffee@seed{\number\time}%
+  \fi
+  \pgfmathsetseed{\coffee@seed}%
+}
+
+\newcommand{\coffee@gettotalpages}{%
+  \@ifundefined{@abspage@last}{0}{\@abspage@last}%
+}
+
+\newcommand{\coffee@chooseplacement}[1]{%
+  \ifcase#1
+    \def\coffee@angle{-18}\def\coffee@x{-5cm}\def\coffee@y{7cm}\or
+    \def\coffee@angle{30}\def\coffee@x{6cm}\def\coffee@y{5.5cm}\or
+    \def\coffee@angle{-35}\def\coffee@x{-6.5cm}\def\coffee@y{-6.3cm}\or
+    \def\coffee@angle{45}\def\coffee@x{6.5cm}\def\coffee@y{-6.3cm}\or
+    \def\coffee@angle{-25}\def\coffee@x{-4.5cm}\def\coffee@y{4.5cm}\or
+    \def\coffee@angle{20}\def\coffee@x{4.8cm}\def\coffee@y{-4.6cm}\else
+    \def\coffee@angle{-15}\def\coffee@x{-5cm}\def\coffee@y{6cm}\fi
+}
+
+\newcommand{\coffee@withDpalette}[1]{%
+  \begingroup
+  \colorlet{coffee16}{brown!70!black}%
+  \colorlet{coffee17}{brown!68!black}%
+  \colorlet{coffee18}{brown!66!black}%
+  \colorlet{coffee19}{brown!64!black}%
+  \colorlet{coffee20}{brown!62!black}%
+  \colorlet{coffee21}{brown!60!black}%
+  \colorlet{coffee22}{brown!58!black}%
+  \colorlet{coffee23}{brown!56!black}%
+  \colorlet{coffee24}{brown!54!black}%
+  \colorlet{coffee25}{brown!52!black}%
+  \colorlet{coffee26}{brown!50!black}%
+  \colorlet{coffee27}{brown!48!black}%
+  \colorlet{coffee28}{brown!46!black}%
+  \colorlet{coffee29}{brown!44!black}%
+  \colorlet{coffee30}{brown!42!black}%
+  \colorlet{coffee31}{brown!40!black}%
+  \colorlet{coffee32}{brown!38!black}%
+  \colorlet{coffee33}{brown!36!black}%
+  \colorlet{coffee34}{brown!34!black}%
+  #1%
+  \endgroup
+}
+
+\newcommand{\coffee@docoffee}{%
+  \pgfmathrandominteger{\coffee@type}{1}{4}%
+  \pgfmathrandominteger{\coffee@pos}{0}{5}%
+  \coffee@chooseplacement{\coffee@pos}%
+  \ifnum\coffee@type=4\relax
+    \pgfmathrandominteger{\coffee@alpha}{2}{4}%
+    \pgfmathrandominteger{\coffee@scale}{35}{45}%
+  \else
+    \pgfmathrandominteger{\coffee@alpha}{3}{7}%
+    \pgfmathrandominteger{\coffee@scale}{55}{75}%
+  \fi
+  \pgfmathrandominteger{\coffee@angleadj}{-10}{10}%
+  \edef\coffee@alphaval{0.\ifnum\coffee@alpha<10 0\fi\coffee@alpha}%
+  \edef\coffee@scaleval{0.\ifnum\coffee@scale<10 0\fi\coffee@scale}%
+  \pgfmathsetmacro{\coffee@anglefinal}{\coffee@angle+\coffee@angleadj}%
+  \ifcase\coffee@type
+    \coffeestainA{\coffee@alphaval}{\coffee@scaleval}{\coffee@anglefinal}{\coffee@x}{\coffee@y}\or
+    \coffeestainB{\coffee@alphaval}{\coffee@scaleval}{\coffee@anglefinal}{\coffee@x}{\coffee@y}\or
+    \coffeestainC{\coffee@alphaval}{\coffee@scaleval}{\coffee@anglefinal}{\coffee@x}{\coffee@y}\or
+    \coffee@withDpalette{\coffeestainD{\coffee@alphaval}{\coffee@scaleval}{\coffee@anglefinal}{\coffee@x}{\coffee@y}}\fi
+  \advance\coffee@placed by 1\relax
+}
+
+\newcommand{\coffee@maybeplace}{%
+  \coffee@total=\coffee@gettotalpages\relax
+  \ifnum\coffee@total=0\relax\else
+    \coffee@pagesleft=\coffee@total
+    \advance\coffee@pagesleft by -\value{page}%
+    \advance\coffee@pagesleft by 1\relax
+    \coffee@needed=\coffee@target
+    \advance\coffee@needed by -\coffee@placed
+    \ifnum\coffee@needed>0\relax
+      \ifnum\coffee@pagesleft<\coffee@needed
+        \coffee@pagesleft=\coffee@needed
+      \fi
+      \pgfmathrandominteger{\coffee@roll}{0}{999}%
+      \pgfmathsetmacro{\coffee@threshold}{int(1000*\coffee@needed/\coffee@pagesleft)}%
+      \ifnum\coffee@pagesleft=\coffee@needed
+        \coffee@docoffee
+      \else
+        \ifnum\coffee@roll<\coffee@threshold\relax
+          \coffee@docoffee
+        \fi
+      \fi
+    \fi
+  \fi
+}
+
+\AddToHook{shipout/foreground}{\coffee@maybeplace}
+\makeatother

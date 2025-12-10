@@ -8,7 +8,7 @@ The \texttt{osdp\_PIVPUTDATA} command instructs the PD to deliver an ISO~7816-4 
 
 \input{tables/osdp-pivputdata}
 
-\paragraph{Responses} A successful write is acknowledged with \texttt{osdp\_ACK}. Failures \textbf{SHALL} use \texttt{osdp\_PIVERRORR} with one of the PIV error codes defined in Subsection~\ref{sec:new-piv-error-codes}: \texttt{0x20} when the function is not supported, \texttt{0x21} when the PD lacks buffer space to stage the payload, \texttt{0x22} when the credential has insufficient storage, \texttt{0x23} when security conditions are not met, or \texttt{0x27} when the credential is not present or is removed during the operation.
+\paragraph{Responses} A successful write is acknowledged with \texttt{osdp\_ACK}. Failures \textbf{SHALL} use \texttt{osdp\_PDERROR} with one of the PIV error codes defined in Subsection~\ref{sec:new-piv-error-codes}: \texttt{0x0120} when the function is not supported, \texttt{0x0121} when the PD lacks buffer space to stage the payload, \texttt{0x0122} when the credential has insufficient storage, \texttt{0x0123} when security conditions are not met, or \texttt{0x0127} when the credential is not present or is removed during the operation.
 
 \subsection{Card Status (osdp\_CARDSTATUS)}
 
@@ -16,15 +16,15 @@ The \texttt{osdp\_CARDSTATUS} command requests the current credential context fr
 
 \input{tables/osdp-cardstatus}
 
-PDs \textbf{SHALL} return \texttt{osdp\_PIVERRORR} with an appropriate error code (for example \texttt{0x03} unknown command, \texttt{0x05} incorrect parameter) if the requested status type is not supported.
+PDs \textbf{SHALL} return \texttt{osdp\_PDERROR} with an appropriate error code (for example \texttt{0x0003} unknown command, \texttt{0x0005} incorrect parameter) if the requested status type is not supported.
 
 \subsection{Card Status Reply (osdp\_CARDSTATUSR)}
 
-In response to \texttt{osdp\_CARDSTATUS}, or when the credential state changes after a PIV mode has been selected, the PD reports the detected credential type, VCI state, and optional application data. When the card state changes asynchronously, the PD \textbf{MAY} send \texttt{osdp\_CARDSTATUSR} as the next \texttt{osdp\_POLL} reply following OSDP’s standard unsolicited-report rules. ACUs may therefore receive the reply either immediately after issuing \texttt{osdp\_CARDSTATUS} or as an unsolicited poll response when a credential is presented or removed.
+In response to \texttt{osdp\_CARDSTATUS}, the PD reports a ready-to-proceed credential state after completing its card-present workflow (power, application selection, and required reads). PDs \textbf{SHALL NOT} send \texttt{osdp\_CARDSTATUSR} unsolicited on \texttt{osdp\_POLL}. Controllers \textbf{SHOULD} continue to use legacy \texttt{osdp\_RAW} poll replies as the single aggregated “card presented and data acquired” indication; PIN usage policy and VCI connectivity \textbf{SHALL NOT} be included in unsolicited poll indications. Detailed readiness (credential type, selected AID, cached data, and readiness flags) \textbf{SHALL} be returned only in solicited \texttt{osdp\_CARDSTATUSR}.
 
 \input{tables/osdp-cardstatusr}
 
-A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_PIVERRORR} and omit the reply. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}). When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe whether a secure channel is currently established, which trust anchor enabled the session, and whether the presented credential requires a pairing code for VCI operation.
+A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_PDERROR} and omit the reply. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}) only after the PD has completed its preparation. When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe stable readiness (for example whether a secure channel is established) and whether the presented credential requires a pairing code; transient negotiation state \textbf{SHALL NOT} be reported.
 
 \subsection{PIV Secure PIN Entry (osdp\_PIVSPE)}
 
@@ -36,9 +36,9 @@ The \texttt{osdp\_PIVSPE} command instructs the PD to perform an ISO/IEC~7816 \t
 
 \input{tables/osdp-pivspe-flags}
 
-Controllers select an \emph{SPE Mode} to match the desired workflow (status query, contact PIN verification, VCI pre-cache/execute, PIN caching, or abort). Modes that rely on VCI (for example \texttt{0x02} and \texttt{0x03}) require the PD to have established VCI beforehand; otherwise the PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x25}. \emph{Start Timeout} and \emph{Inter-key Timeout} values of zero disable the respective timer. \emph{Cache Validity} is expressed in seconds (LSB first); a value of zero disables PIN caching. If a mode requests PIN caching, the PD \textbf{SHALL NOT} transmit the PIN to the ACU.
+Controllers select an \emph{SPE Mode} to match the desired workflow (status query, contact PIN verification, VCI pre-cache/execute, PIN caching, or abort). Modes that rely on VCI (for example \texttt{0x02} and \texttt{0x03}) require the PD to have established VCI beforehand; otherwise the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0125}. \emph{Start Timeout} and \emph{Inter-key Timeout} values of zero disable the respective timer. \emph{Cache Validity} is expressed in seconds (LSB first); a value of zero disables PIN caching. If a mode requests PIN caching, the PD \textbf{SHALL NOT} transmit the PIN to the ACU.
 
-A successful request is acknowledged with \texttt{osdp\_ACK}. The PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} with one of the following codes when a failure occurs: \texttt{0x20} (function not supported), \texttt{0x05} (incorrect parameter), \texttt{0x23} (security status not satisfied), \texttt{0x25} (VCI not established for VCI-specific modes), or \texttt{0x27} (credential not present or removed). After issuing \texttt{osdp\_PIVSPE}, the ACU \textbf{SHALL NOT} send other PIV commands until a corresponding \texttt{osdp\_PIVSPER} reply is received.
+A successful request is acknowledged with \texttt{osdp\_ACK}. The PD \textbf{SHALL} return \texttt{osdp\_PDERROR} with one of the following codes when a failure occurs: \texttt{0x0120} (function not supported), \texttt{0x0005} (incorrect parameter), \texttt{0x0123} (security status not satisfied), \texttt{0x0125} (VCI not established for VCI-specific modes), or \texttt{0x0127} (credential not present or removed). After issuing \texttt{osdp\_PIVSPE}, the ACU \textbf{SHALL NOT} send other PIV commands until a corresponding \texttt{osdp\_PIVSPER} reply is received.
 
 \subsection{PIV Secure PIN Entry Reply (osdp\_PIVSPER)}
 
@@ -58,7 +58,7 @@ The \texttt{osdp\_PIVBIOMATCH} command instructs the PD to acquire a live sample
 
 \input{tables/osdp-pivbiomatch-types}
 
-Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, where applicable (e.g., TWIC contactless), to have a valid privacy key loaded via \texttt{osdp\_PIV\_LOADTPK}. On-card flows require the credential to support OCC. If prerequisites are not met, the PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} with one of the PIV error codes (for example, \texttt{0x20} function not supported by credential, \texttt{0x23} credential security status not satisfied, \texttt{0x25} VCI not established, \texttt{0x27} credential not present/removed, or \texttt{0x28} biometric type not supported).
+Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, where applicable (e.g., TWIC contactless), to have a valid privacy key loaded via \texttt{osdp\_PIV\_LOADTPK}. On-card flows require the credential to support OCC. If prerequisites are not met, the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} with one of the PIV error codes (for example, \texttt{0x0120} function not supported by credential, \texttt{0x0123} credential security status not satisfied, \texttt{0x0125} VCI not established, \texttt{0x0127} credential not present/removed, or \texttt{0x0128} biometric type not supported).
 
 \subsection{PIV Biometric Match Reply (osdp\_PIVBIOMATCHR)}
 
@@ -74,7 +74,7 @@ The \texttt{osdp\_PIV\_LOADTPK} command instructs the PD to cache a TWIC Privacy
 
 \input{tables/osdp-loadtpk}
 
-Controllers set \emph{Cache Timeout} to define how long (in seconds) the PD may retain the key. A value of \texttt{0x00} clears any cached TPK immediately. Values \texttt{0x01}--\texttt{0xFF} allow caching for up to 255 seconds. Bit~0 of \emph{Control Flags} directs the PD to clear the cached TPK when the credential is removed; all other bits are reserved and \textbf{SHALL} be transmitted as zero. If the PD does not support TWIC TPK caching it \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x03}. Invalid payloads (for example reserved bits set) \textbf{SHALL} elicit \texttt{osdp\_PIVERRORR} \texttt{0x05}.
+Controllers set \emph{Cache Timeout} to define how long (in seconds) the PD may retain the key. A value of \texttt{0x00} clears any cached TPK immediately. Values \texttt{0x01}--\texttt{0xFF} allow caching for up to 255 seconds. Bit~0 of \emph{Control Flags} directs the PD to clear the cached TPK when the credential is removed; all other bits are reserved and \textbf{SHALL} be transmitted as zero. If the PD does not support TWIC TPK caching it \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0003}. Invalid payloads (for example reserved bits set) \textbf{SHALL} elicit \texttt{osdp\_PDERROR} \texttt{0x0005}.
 
 \subsection{PIV VCI Pairing Code Transmit (osdp\_PIV\_XMITPAIRING)}
 
@@ -82,7 +82,7 @@ The \texttt{osdp\_PIV\_XMITPAIRING} command delivers an eight-digit pairing code
 
 \input{tables/osdp-xmitpairing}
 
-The pairing code is encoded as eight ASCII digits (\texttt{'0'}--\texttt{'9'}). A PD that has not yet established VCI \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x25} (VCI not established). If no PIV application is selected, the PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x05}. PDs \textbf{SHALL} clear the stored pairing code when VCI is torn down or when the active PIV mode changes.
+The pairing code is encoded as eight ASCII digits (\texttt{'0'}--\texttt{'9'}). A PD that has not yet established VCI \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0125} (VCI not established). If no PIV application is selected, the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0005}. PDs \textbf{SHALL} clear the stored pairing code when VCI is torn down or when the active PIV mode changes.
 
 \subsection{Set PIV Mode (osdp\_PIVMODE)}\label{sec:pivmode}
 
@@ -106,9 +106,9 @@ After the flags, the payload uses standard multi-part framing fields and a confi
     \end{itemize}
 \end{itemize}
 
-PDs process configuration entries in order, applying the global mask (when present) before honouring each entry’s mask. Invalid masks, unknown data-model identifiers, or malformed TLVs \textbf{SHALL} result in \texttt{osdp\_PIVERRORR} \texttt{0x05}. Controllers \textbf{SHALL} send the command over a secure channel where required; the PD \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x06} if the necessary security conditions are not satisfied. Multi-part framing errors result in \texttt{osdp\_PIVERRORR} \texttt{0x07}. If the PD cannot cache the requested configuration set, it \textbf{SHALL} respond with \texttt{osdp\_PIVERRORR} \texttt{0x21}.
+PDs process configuration entries in order, applying the global mask (when present) before honouring each entry’s mask. Invalid masks, unknown data-model identifiers, or malformed TLVs \textbf{SHALL} result in \texttt{osdp\_PDERROR} \texttt{0x0005}. Controllers \textbf{SHALL} send the command over a secure channel where required; the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0006} if the necessary security conditions are not satisfied. Multi-part framing errors result in \texttt{osdp\_PDERROR} \texttt{0x0007}. If the PD cannot cache the requested configuration set, it \textbf{SHALL} respond with \texttt{osdp\_PDERROR} \texttt{0x0121}.
 
-When PIV Auto is enabled, PDs interrogate the credential on presentation, establish VCI automatically when possible, and advance through authentication without explicit ACU prompts. If a pairing code is required, the PD signals the state change via \texttt{osdp\_CARDSTATUSR}; the ACU then provides the code using \texttt{osdp\_PIV\_XMITPAIRING}. Commands that rely on PIV Auto \textbf{SHALL} return \texttt{osdp\_PIVERRORR} \texttt{0x26} when the feature has not been configured.
+When PIV Auto is enabled, PDs interrogate the credential on presentation, establish VCI automatically when possible, and advance through authentication without explicit ACU prompts. If a pairing code is required, the PD signals the state change via a solicited \texttt{osdp\_CARDSTATUSR} (not via unsolicited poll); the ACU then provides the code using \texttt{osdp\_PIV\_XMITPAIRING}. Commands that rely on PIV Auto \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0126} when the feature has not been configured.
 
 \subsection{VCI Trust Anchor Load (osdp\_PIV\_VCILOADTA)}
 
@@ -118,7 +118,7 @@ The \texttt{osdp\_PIV\_VCILOADTA} command loads, replaces, or deletes a Virtual 
 
 The metadata block (operation, identifier, IIN, anchor length) appears only in the first fragment where \texttt{MpOffset = 0}; subsequent fragments carry additional anchor bytes. Controllers set \emph{Operation} to \texttt{0x00} to load or replace the anchor identified by \emph{Trust Anchor ID}. Set \emph{Operation} to \texttt{0x01} with \emph{Anchor Length} \texttt{0x0000} to delete the anchor. The \emph{Issuer Identifier Number (IIN)} is the leftmost eight bytes of the subjectKeyIdentifier in the content signing certificate used to protect the credential. The \emph{Anchor Length} declares the total size of the anchor payload; controllers shall send the exact number of bytes in one or more fragments.
 
-PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. A successful operation returns \texttt{osdp\_ACK}. Failures return \texttt{osdp\_PIVERRORR} with:
+PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. A successful operation returns \texttt{osdp\_ACK}. Failures return \texttt{osdp\_PDERROR} with:
 \begin{itemize}
   \item \texttt{0x03} when the PD does not support trust-anchor caching.
   \item \texttt{0x05} for malformed metadata (unknown operation, reserved bits, invalid lengths).
@@ -136,7 +136,7 @@ The \texttt{osdp\_PIV\_VCITASTATUS} command enumerates cached trust anchors and 
 
 \input{tables/osdp-vcitastatus}
 
-The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Error responses follow the standard pattern: \texttt{osdp\_PIVERRORR} \texttt{0x03} for unsupported command, \texttt{osdp\_PIVERRORR} \texttt{0x07} for multi-part errors.
+The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Error responses follow the standard pattern: \texttt{osdp\_PDERROR} \texttt{0x0003} for unsupported command, \texttt{osdp\_PDERROR} \texttt{0x0007} for multi-part errors.
 
 \begin{table}[ht]
   \centering

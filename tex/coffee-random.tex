@@ -15,6 +15,8 @@
 \newcount\coffee@alpha
 \newcount\coffee@scale
 \newcount\coffee@angleadj
+\newcount\coffee@remaining
+\newcount\coffee@threshold
 
 \def\coffee@seed{}
 
@@ -73,10 +75,10 @@
   \pgfmathrandominteger{\coffee@pos}{0}{5}%
   \coffee@chooseplacement{\coffee@pos}%
   \ifnum\coffee@type=4\relax
-    \pgfmathrandominteger{\coffee@alpha}{2}{4}%
+    \pgfmathrandominteger{\coffee@alpha}{1}{2}%
     \pgfmathrandominteger{\coffee@scale}{35}{45}%
   \else
-    \pgfmathrandominteger{\coffee@alpha}{3}{7}%
+    \pgfmathrandominteger{\coffee@alpha}{1}{3}%
     \pgfmathrandominteger{\coffee@scale}{55}{75}%
   \fi
   \pgfmathrandominteger{\coffee@angleadj}{-10}{10}%
@@ -93,24 +95,29 @@
 
 \newcommand{\coffee@maybeplace}{%
   \coffee@total=\coffee@gettotalpages\relax
-  \ifnum\coffee@total=0\relax\else
-    \coffee@pagesleft=\coffee@total
-    \advance\coffee@pagesleft by -\value{page}%
-    \advance\coffee@pagesleft by 1\relax
-    \coffee@needed=\coffee@target
-    \advance\coffee@needed by -\coffee@placed
-    \ifnum\coffee@needed>0\relax
-      \ifnum\coffee@pagesleft<\coffee@needed
-        \coffee@pagesleft=\coffee@needed
+  \coffee@needed=\coffee@target
+  \ifnum\coffee@needed=0\relax
+    \coffee@needed=\coffee@total
+    \divide\coffee@needed by 3\relax
+    \ifnum\coffee@needed<1\relax\coffee@needed=1\relax\fi
+  \fi
+  \ifnum\coffee@total>0\relax
+    \coffee@remaining=\coffee@needed
+    \advance\coffee@remaining by -\coffee@placed
+    \ifnum\coffee@remaining>0\relax
+      \coffee@pagesleft=\coffee@total
+      \advance\coffee@pagesleft by -\value{page}%
+      \advance\coffee@pagesleft by 1\relax
+      \ifnum\coffee@pagesleft<\coffee@remaining
+        \coffee@pagesleft=\coffee@remaining
       \fi
+      \coffee@threshold=\coffee@remaining
+      \multiply\coffee@threshold by 1000\relax
+      \divide\coffee@threshold by \coffee@pagesleft
+      \ifnum\coffee@threshold<1\relax\coffee@threshold=1\relax\fi
       \pgfmathrandominteger{\coffee@roll}{0}{999}%
-      \pgfmathsetmacro{\coffee@threshold}{int(1000*\coffee@needed/\coffee@pagesleft)}%
-      \ifnum\coffee@pagesleft=\coffee@needed
+      \ifnum\coffee@roll<\coffee@threshold\relax
         \coffee@docoffee
-      \else
-        \ifnum\coffee@roll<\coffee@threshold\relax
-          \coffee@docoffee
-        \fi
       \fi
     \fi
   \fi

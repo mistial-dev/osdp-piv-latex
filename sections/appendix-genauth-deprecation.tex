@@ -1,0 +1,3 @@
+\section{Deprecated \texttt{osdp\_GENAUTH}}
+
+The legacy \texttt{osdp\_GENAUTH} command is deprecated and expected to be removed in a future revision of this specification. Using a PIV credential to decrypt or process arbitrary data is unsafe and unnecessary for credential verification; implementations \textbf{SHOULD} use \texttt{osdp\_CRAUTH} flows instead. Controllers and PDs \textbf{SHOULD} plan migrations away from \texttt{osdp\_GENAUTH}.

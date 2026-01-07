@@ -24,7 +24,7 @@ In response to \texttt{osdp\_CARDSTATUS}, the PD reports a ready-to-proceed cred
 
 \input{tables/osdp-cardstatusr}
 
-A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_PDERROR} and omit the reply. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}) only after the PD has completed its preparation. When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe stable readiness (for example whether a secure channel is established) and whether the presented credential requires a pairing code; transient negotiation state \textbf{SHALL NOT} be reported.
+A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_PDERROR} and omit the reply. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}) only after the PD has completed its preparation. When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe stable readiness (for example whether a secure channel is established) and whether the presented credential requires a pairing code; transient negotiation state \textbf{SHALL NOT} be reported. If the credential is removed before preparation completes, the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} (for example \texttt{0x0127}) instead of \texttt{osdp\_CARDSTATUSR}. \texttt{osdp\_CARDSTATUSR} is sent only in response to a matching \texttt{osdp\_CARDSTATUS} request.
 
 \subsection{PIV Secure PIN Entry (osdp\_PIVSPE)}
 
@@ -94,14 +94,18 @@ The \emph{PIV Mode Flags} byte enables global behaviours such as autonomous oper
 
 \input{tables/osdp-pivmode-flags}
 
+Global and per-entry interface masks use the bit positions in Table~\ref{tab:pivmode-interfaces}; the Global Interface Mask bounds the interfaces a PD may use when processing all configuration entries.
+
+\input{tables/osdp-pivmode-interfaces}
+
 After the flags, the payload uses standard multi-part framing fields and a configuration count (1--32). The count is followed immediately by the required Global Interface Mask byte. Each configuration appears as a TLV:
 
 \begin{itemize}
-  \item \textbf{Global Interface Mask (required)} — One-byte mask (no tag) that limits the interfaces the PD may use for all configurations. Bit assignments follow Function Code~13 (bit~0 contact, bit~1 contactless, bit~3 Bluetooth); bit~2 is reserved and \textbf{SHALL} be zero. A value of \texttt{0x00} indicates no global restriction.
+  \item \textbf{Global Interface Mask (required)} — One-byte mask (no tag) that limits the interfaces the PD may use for all configurations (see Table~\ref{tab:pivmode-interfaces}). A value of \texttt{0x00} indicates no global restriction; reserved bits \textbf{SHALL} be zero.
   \item \textbf{Configuration Entry (Tag \texttt{0x01})} — Contains the data-model identifier, a per-entry interface mask, the AID length, and the optional AID:
     \begin{itemize}
       \item \emph{Data Model} (\texttt{0x01} PIV, \texttt{0x02} TWIC, values \texttt{0x04}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use).
-      \item \emph{Interface Mask} — Uses the same bit positions as the global mask; \texttt{0x00} means “any interface permitted by the global mask.”
+      \item \emph{Interface Mask} — Uses the same bit positions as the global mask (Table~\ref{tab:pivmode-interfaces}) and \textbf{SHALL NOT} assert interfaces excluded by the Global Interface Mask. A value of \texttt{0x00} means “any interface permitted by the global mask.”
       \item \emph{AID Length} (0--16) and \emph{AID} bytes when provided. The legacy AID list referenced in earlier proposals is informational; it is not part of the official OSDP~2.2 specification.
     \end{itemize}
 \end{itemize}
@@ -138,9 +142,11 @@ The \texttt{osdp\_PIV\_VCITASTATUS} command enumerates cached trust anchors and 
 
 The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Error responses follow the standard pattern: \texttt{osdp\_PDERROR} \texttt{0x0003} for unsupported command, \texttt{osdp\_PDERROR} \texttt{0x0007} for multi-part errors.
 
-\begin{table}[ht]
-  \centering
-  \caption{Trust Anchor Record Structure}
+\Needspace{14\baselineskip}
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{Trust Anchor Record Structure}
   \label{tab:trust-anchor-record}
   \begin{tabular}{|c|p{5cm}|p{5cm}|p{2cm}|}
     \hline
@@ -154,4 +160,5 @@ The PD first reports the total number of anchors and the remaining free bytes. E
     Anchor Length & 2 bytes (LSB first) & Total size of the stored anchor or compact representation. & 0x0000--0xFFFF \\\hline
     Attributes & 1 byte & Reserved for future use; transmitted as zero. & 0x00 \\\hline
   \end{tabular}
-\end{table}
+\end{center}
+\end{samepage}

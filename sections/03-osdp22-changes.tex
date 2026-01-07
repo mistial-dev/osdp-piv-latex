@@ -24,6 +24,8 @@ OSDP~2.2 transports the ISO/IEC~7816-4 \texttt{GENERAL AUTHENTICATE} command thr
 
 The reply continues to use the OSDP~2.2 multi-part format. Successful execution yields a response containing the credential’s entire \texttt{GENERAL AUTHENTICATE} data (minus the ISO/IEC~7816 status word), including the returned Dynamic Authentication Template; PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths. If the credential reports an error, the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} with the applicable PIV code—for example \texttt{0x0120} (function not supported by credential), \texttt{0x0121} (insufficient PD resources), \texttt{0x0122} (insufficient credential storage), \texttt{0x0123} (credential security status not satisfied), \texttt{0x0124} (data object/tag not found), \texttt{0x0125} (VCI not established), or \texttt{0x0127} (credential not present/removed). Generic parameter/security preconditions may continue to use \texttt{0x0005} (incorrect parameter) and \texttt{0x0006}/\texttt{0x0007} (PIN verification failed/timeout) where those codes remain canonical.
 
+\paragraph{Reply structure} \texttt{osdp\_CRAUTHR} \textbf{SHALL} return the credential’s full ISO/IEC~7816 \texttt{GENERAL AUTHENTICATE} response payload, including the Dynamic Authentication Template, framed by the standard OSDP multi-part fields. PDs \textbf{SHALL NOT} include SW1\textbar SW2 in \texttt{osdp\_CRAUTHR}; any status words from the credential \textbf{SHALL} be carried only in \texttt{osdp\_PDERROR} when a card/APDU failure occurs. PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths from the returned payload.
+
 \input{tables/osdp-crauthr}
 
 \subsubsection{Get PIV Data (osdp\_PIVDATA)}
@@ -36,7 +38,11 @@ OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a
   \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). PDs \textbf{SHALL} return \texttt{osdp\_PDERROR} with error code \texttt{0x0123} when security prerequisites are not satisfied and \texttt{0x0124} when the requested object or tag is absent; see Subsection~\ref{sec:new-piv-error-codes}. If the credential is not present or is removed during processing, PDs may return error code \texttt{0x0127}.
 \end{itemize}
 
+\clearpage
+\Needspace{20\baselineskip}
+\begin{samepage}
 \input{tables/osdp-pivdata}
+\end{samepage}
 
 \subsubsection{PIV Data Reply (osdp\_PIVDATAR)}
 

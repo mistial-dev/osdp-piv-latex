@@ -1,12 +1,15 @@
 \documentclass{tex/osdp-report}
 
 \usepackage{tex/tables}
-\usepackage{tex/coffeestains}
-\input{tex/coffee-random}
+\usepackage{tikz}
+
+\AddToHook{shipout/background}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[rotate=45, text opacity=0.05, scale=10] at (current page.center) {\textcolor{gray!30}{\bfseries DRAFT}};
+  \end{tikzpicture}
+}
 
 \begin{document}
-
-\SetupRandomCoffeeStains{0}{\number\time}
 
 \title{OSDP 2.3 Proposed PIV Enhancements}
 \author{Security Industry Association}

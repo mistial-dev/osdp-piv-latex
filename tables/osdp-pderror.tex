@@ -1,5 +1,5 @@
 \begin{PacketTable}{PD Application Error Reply (osdp\_PDERROR)}
   \PacketRow{1}{CMND}{Command identifier.}{0x84}
-  \PacketRow{2}{Error Code}{Two-byte error code, least-significant byte first.}{0x0001--0x01FF}
-  \PacketRow{0 or 2}{Status Word}{Optional ISO/IEC~7816 status word for card/APDU failures; present only when defined by the command profile (for example PIV APDU errors).}{--}
+  \PacketRow{2}{Error Code}{Two-byte error code, least-significant byte first.}{0x0001--0x10FF}
+  \PacketRow{0 or 2}{Status Word}{Optional ISO/IEC~7816 status word for card/APDU failures; present only when the PD can surface it to the application layer.}{--}
 \end{PacketTable}

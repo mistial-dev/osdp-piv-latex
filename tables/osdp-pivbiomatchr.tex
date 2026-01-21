@@ -1,6 +1,5 @@
 \begin{PacketTable}{PIV Biometric Match Reply (osdp\_PIVBIOMATCHR)}
-  \PacketRow{1}{CMND}{Reply identifier.}{TBA}
+  \PacketRow{1}{CMND}{Reply identifier.}{0x87 (tentative)}
   \PacketRow{1}{Result}{Outcome of the biometric match. See Table~\ref{tab:pivbiomatch-results}.}{0x00--0xFF}
   \PacketRow{32}{Hash (optional)}{Present on success when required: 32-byte SHA-256 hash of the biometric tag 0xBC data field. Omitted on failure results.}{0x00--0xFF}
 \end{PacketTable}
-

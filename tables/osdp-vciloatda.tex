@@ -1,5 +1,5 @@
 \begin{PacketTable}{VCI Trust Anchor Load (osdp\_PIV\_VCILOADTA)}
-  \PacketRow{1}{CMND}{Command identifier.}{TBA}
+  \PacketRow{1}{CMND}{Command identifier.}{0xAF (tentative)}
   \PacketRow{1}{Operation}{\texttt{0x00} load/replace anchor; \texttt{0x01} delete anchor; \texttt{0x02} query anchor inventory.}{0x00--0x02}
   \PacketRow{1}{Trust Anchor ID}{Controller-assigned identifier for the anchor (1--128).}{0x00--0xFF}
   \PacketRow{8}{Issuer Identifier Number}{Leftmost eight bytes of the subjectKeyIdentifier from the issuing content-signing certificate.}{0x00--0xFF}

@@ -1,56 +1,29 @@
 \section{High-Speed Autonomous PIV Data Templates}
 
-This appendix summarizes the data templates used by the SIA High-Speed Autonomous PIV flow. Bracketed values (for example \texttt{[010203]}) denote illustrative placeholders pulled from device identifiers or credential contents.
+This appendix summarizes the data templates used by the SIA High-Speed Autonomous PIV flow. Bracketed values (for example \texttt{[010203]}) denote illustrative placeholders pulled from device identifiers or credential contents. Current PIV Auto challenge generation uses a fixed-width KMAC256 input template rather than the earlier ASN.1 CMAC template.
 
 \begingroup\footnotesize
 
-\subsection{PD Challenge Generation Parameters}
+\subsection{Fixed-Width KMAC Challenge Template}
 \begin{verbatim}
-30 81 E8                      # Sequence of length 0xE8
-06 0B 2B0601040182CC230A0104  # OID: Challenge Generation Parameters
-
-A0 03                         # Explicit Tag: 0x00
-02 01 01                      # Integer: version 1
-
-A1 1D                         # Explicit Tag: 0x01
-30 1B                         # Sequence of length 0x1B
-06 0B 2B0601040182CC230A0A01  # OID: SIA PIV Peripheral Device Identifier
-04 03 [010203]                # 24-bit IEEE assigned OUI (from OSDP_PDID)
-04 01 [04]                    # 8-bit Model Number (from OSDP_PDID)
-04 04 [0708090A]              # 32-bit Serial Number (from OSDP_PDID)
-
-A2 1D                         # Explicit Tag: 0x02
-30 1B                         # Sequence of length 0x1B
-06 0B 2B0601040182CC230A0102  # OID: SIA Autonomous PIV NONCE
-03 05 00[EF000000]            # Series Counter: persistent session counter or random
-03 05 00[21E30000]            # Sequence Counter: number of challenges this session
-
-A3 61                         # Explicit Tag: 0x03
-30 5F                         # Sequence of length 0x5F
-30 26
-06 08 6086480165030606        # OID: FASC-N
-03 1A 00[...]                 # FASC-N from credential
-30 1B
-06 06 2B0601011004            # OID: Entry UUID
-03 11 00[...]                 # UUID from credential (or 0x00s if absent)
-06 0C 2B0601040182CC230A0103[01] # OID: 0x01=RSA-SHA256-PKCS1.5, 0x02=ECDSA-SHA256
-06 0A 6086480165030702[0500]  # OID: 0x0500=Card Auth (contactless), 0x0101=PIV Auth (contact)
-
-A4 23                         # Explicit Tag: 0x04
-30 21                         # Sequence of length 0x21
-06 0C 2B0601040182CC230A010401 # OID: Supplemental (PD-provided) entropy
-03 11 00[...]                 # 32-byte supplemental entropy (or 0x00s if absent)
-
-A5 0E                         # Explicit Tag: 0x05
-06 0C 2B0601040182CC230A010501 # OID: MAC is CMAC-AES-S-MAC3
+4F 53 44 50 2D 50 49 56 2D 41 55 54 4F 01  # "OSDP-PIV-AUTO", version 1
+[07000000]                                  # Series Counter, 32-bit LSB first
+[2A000000]                                  # Sequence Counter, 32-bit LSB first
+[D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7] # FASC-N
+[09D49C7EFDD0432EACEA268AE905274C]         # UUID, or 16 zero bytes
+[9E]                                        # PIV key reference
+[07]                                        # PIV algorithm identifier
+[00112233445566778899AABBCCDDEEFF...]       # 32-byte supplemental entropy
 \end{verbatim}
+
+The challenge is \texttt{KMAC256(SC2-derived-key, template, 32, "OSDP-PIV-AUTO-CHALLENGE-v1")}. The supplemental entropy field is always present and fixed at 32 bytes; all zeroes are valid but not recommended.
 
 \subsection{PIV Signing Request}
 \begin{verbatim}
 30 22                         # Sequence of length 0x22
 06 0B 2B0601040182CC230A0101  # OID: SIA PIV Signing Request
 A0 13                         # Explicit Tag: 0x00
-03 11 00[000102030405060708090A0B0C0D0E0F] # C-MAC of PD Challenge
+03 21 00[...]                 # 32-byte KMAC256 PIV Auto challenge
 \end{verbatim}
 
 \subsection{Dynamic Authentication Templates}

@@ -7,8 +7,12 @@
 \RequirePackage{iftex}
 \RequirePackage{xcolor}
 \RequirePackage{graphicx}
+\RequirePackage{microtype}
 \RequirePackage{hyperref}
 \RequirePackage{needspace}
+
+\widowpenalty=10000
+\clubpenalty=10000
 
 \ifPDFTeX
   \RequirePackage[T1]{fontenc}

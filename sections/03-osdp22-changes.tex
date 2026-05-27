@@ -6,7 +6,7 @@ This section documents the normative deltas that apply when an OSDP~2.2 implemen
 
 \subsubsection{Authentication Challenge (osdp\_CRAUTH)}
 
-OSDP~2.2 transports the ISO/IEC~7816-4 \texttt{GENERAL AUTHENTICATE} command through \texttt{osdp\_CRAUTH}. The OSDP~2.3 profile maintains the same framing fields (\texttt{TOTAL}, \texttt{OFFSET}, \texttt{DATA\_LEN}) but extends the semantics of the command payload so PDs can carry both the classic RSA signing flow and the enhanced elliptic-curve key-agreement flow.
+OSDP~2.2 transports the ISO/IEC~7816-4 \texttt{GENERAL AUTHENTICATE} command through \texttt{osdp\_CRAUTH}. The OSDP~3.0 profile maintains the same framing fields (\texttt{TOTAL}, \texttt{OFFSET}, \texttt{DATA\_LEN}) but extends the semantics of the command payload so PDs can carry both the classic RSA signing flow and the enhanced elliptic-curve key-agreement flow.
 
 \begin{itemize}
   \item The \emph{Algorithm} field continues to be sent in the first fragment only. Codes \texttt{0x05}, \texttt{0x06}, and \texttt{0x07} select RSA signing operations and preserve backwards compatibility with OSDP~2.2. Codes \texttt{0x08}, \texttt{0x0A}, and \texttt{0x0C} select AES encryption using 128-, 192-, and 256-bit keys respectively. Codes \texttt{0x11} and \texttt{0x14} select elliptic-curve key agreement using the P-256 and P-384 curves.
@@ -30,7 +30,7 @@ The reply continues to use the OSDP~2.2 multi-part format. Successful execution 
 
 \subsubsection{Get PIV Data (osdp\_PIVDATA)}
 
-OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a PIV object and optional element. The original text did not explicitly specify how to pad identifiers shorter than three bytes, how nested tags should be returned, or how to interpret the data offset. OSDP~2.3 clarifies these behaviors so that ACUs and PDs apply a single normative approach.
+OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a PIV object and optional element. The original text did not explicitly specify how to pad identifiers shorter than three bytes, how nested tags should be returned, or how to interpret the data offset. OSDP~3.0 clarifies these behaviors so that ACUs and PDs apply a single normative approach.
 
 \begin{itemize}
   \item The ACU \textbf{SHALL} transmit the PIV Object Identifier as three bytes encoded most-significant byte first. When the identifier contains fewer than three significant bytes, the ACU \textbf{SHALL} left-pad the value with \texttt{0x00} or \texttt{0x0000}, as required, so that the transmitted field is exactly three bytes. The PD \textbf{SHALL NOT} forward those pad bytes to the credential; it \textbf{SHALL} issue the ISO~7816-4 \texttt{GET DATA} APDU using only the significant identifier bytes. If VCI secure messaging is established, the PD \textbf{SHALL} use the appropriate secure channel automatically; no explicit selector is present in the command.
@@ -123,6 +123,6 @@ When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance b
 
 \subsubsection{Function Code 14 – Biometric Support}
 
-Function Code~14 remains backward compatible with OSDP~2.2. A compliance value of \texttt{0x00}, \texttt{0x01}, \texttt{0x02}, or \texttt{0x03} retains its original meaning and indicates that the PD does not support the OSDP~2.3 biometric command set. Devices that support the enhanced commands \textbf{SHALL} set Bit~7 (\texttt{0x80}). When Bit~7 is asserted, the remaining bits of the compliance byte are interpreted as a capability bitfield. Bits not explicitly defined in Table~\ref{tab:function-code-14-flags} are reserved and \textbf{SHALL} be transmitted as zero.
+Function Code~14 remains backward compatible with OSDP~2.2. A compliance value of \texttt{0x00}, \texttt{0x01}, \texttt{0x02}, or \texttt{0x03} retains its original meaning and indicates that the PD does not support the OSDP~3.0 biometric command set. Devices that support the enhanced commands \textbf{SHALL} set Bit~7 (\texttt{0x80}). When Bit~7 is asserted, the remaining bits of the compliance byte are interpreted as a capability bitfield. Bits not explicitly defined in Table~\ref{tab:function-code-14-flags} are reserved and \textbf{SHALL} be transmitted as zero.
 
 \input{tables/function-code-14}

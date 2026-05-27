@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "status": "passed",
+    "message": "PD validation passed using the direct path. The ACU should receive CVC IIN 1905976BDDCA823D and anchor IIN 1905976BDDCA823D.",
+    "pd_path": "direct",
+    "trust_anchor": "EC-secp256r1 IIN 1905976BDDCA823D",
+    "secure_cvc_iin": "1905976BDDCA823D",
+    "selected_anchor_iin": "1905976BDDCA823D"
+  },
+  "result": {
+    "passed": true,
+    "reason": null
+  },
+  "reported_to_acu": {
+    "vci_cvc_iin": "1905976BDDCA823D",
+    "vci_anchor_iin": "1905976BDDCA823D"
+  },
+  "pd_validation": {
+    "path": "direct",
+    "checks": [
+      {
+        "check": "secure_cvc_iin_matches_anchor_iin",
+        "description": "Secure messaging CVC tag 42 matches the loaded trust anchor IIN.",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "secure_cvc_signature_with_anchor",
+        "description": "Secure messaging CVC signature verifies with the loaded trust anchor public key.",
+        "passed": true,
+        "reason": null
+      }
+    ],
+    "plain_english_scope": "The PD validates only the immediate signer of the secure messaging CVC. It does not validate X.509 path, time, policy, or revocation.",
+    "validates_only_immediate_cvc_signer": true,
+    "does_not_validate_x509_time_path_policy_or_revocation": true
+  },
+  "acu_validation": {
+    "x509_certificate_present": false,
+    "time_validation": "not_checked",
+    "path_validation": "not_checked",
+    "policy_validation": "not_checked",
+    "revocation_validation": "not_checked",
+    "notes": [
+      "5FC122 content-signing certificate not supplied; ACU must retrieve or already possess it."
+    ]
+  },
+  "inputs": {
+    "anchor": "../test-vectors/vci-trust-anchors/card-4-ec-direct/vci-trust-anchor-record.bin",
+    "cvc": "../test-vectors/vci-trust-anchors/card-4-ec-direct/secure-messaging-cvc-7f21.bin",
+    "smcs": null,
+    "ca_bundle": null,
+    "validation_time": null
+  },
+  "trust_anchor": {
+    "iin": "1905976BDDCA823D",
+    "algorithm": "EC-secp256r1",
+    "spki_length": 91,
+    "record_length": 110
+  },
+  "cvc": {
+    "length": 211,
+    "profile": "80",
+    "iin": "1905976BDDCA823D",
+    "subject_identifier": "A4EB5A0966C34F3E83F3B77E0EE96A25",
+    "role": "00",
+    "public_key_curve_oid": "1.2.840.10045.3.1.7",
+    "signature_algorithm_oid": "1.2.840.10045.4.3.2"
+  },
+  "intermediate_cvc": null
+}

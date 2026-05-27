@@ -8,11 +8,10 @@
     \hline
     \rowcolor{PacketHeaderBg}
     \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
-    0x01 & Allow retry continuation when the credential remains present after a PIN-entry failure. \\\hline
     0x02 & Require an explicit cache-clear command; do not auto-clear cached PINs on credential removal. \\\hline
     0x04 & Skip pairing-code verification when the credential and policy permit VCI without a pairing code. \\\hline
     0x08 & Auto-execute VCI verification when the credential is presented after a successful pre-cache (Mode \texttt{0x02}). \\\hline
-    0x10--0x80 & Reserved and \textbf{SHALL} be transmitted as zero. \\\hline
+    0x01, 0x10--0x80 & Reserved and \textbf{SHALL} be transmitted as zero. \\\hline
   \end{tabular}
 \end{center}
 \end{samepage}

@@ -1,0 +1,47 @@
+{
+  "warning": "Reusable demonstration keys copied from gsa-icam-card-builder. Do not use as production trust material.",
+  "pkcs12_password": "",
+  "source_root": "~/Projects/gsa-icam-card-builder",
+  "files": [
+    {
+      "role": "root_ca",
+      "source": "certutils/data/ICAM_Test_Card_PIV_Root_CA_-_gold_gen1-3.p12",
+      "destination": "source-p12/root-ca.p12"
+    },
+    {
+      "role": "root_ca_certificate",
+      "source": "certutils/data/pem/ICAM_Test_Card_PIV_Root_CA_-_gold_gen1-3.crt",
+      "destination": "certs/root-ca.crt"
+    },
+    {
+      "role": "intermediate_ca_loaded_in_pd",
+      "source": "certutils/data/ICAM_Test_Card_PIV_RSA_2048_Signing_CA_-_gold_gen3.p12",
+      "destination": "source-p12/intermediate-ca-rsa2048.p12"
+    },
+    {
+      "role": "intermediate_ca_loaded_in_pd_certificate",
+      "source": "certutils/data/pem/ICAM_Test_Card_PIV_RSA_2048_Signing_CA_-_gold_gen3.crt",
+      "destination": "certs/intermediate-ca-rsa2048.crt"
+    },
+    {
+      "role": "intermediate_cvc_signer",
+      "source": "certutils/data/ICAM_Test_Card_PIV_RSA_Issued_Intermediate_CVC_Signer.p12",
+      "destination": "source-p12/intermediate-cvc-signer-p256.p12"
+    },
+    {
+      "role": "intermediate_cvc_signer_certificate",
+      "source": "certutils/data/pem/ICAM_Test_Card_PIV_RSA_Issued_Intermediate_CVC_Signer.crt",
+      "destination": "certs/intermediate-cvc-signer-p256.crt"
+    },
+    {
+      "role": "card_authentication",
+      "source": "cards/ICAM_Card_Objects/01_Golden_PIV/6 - ICAM_PIV_Card_Auth_SP_800-73-4.p12",
+      "destination": "source-p12/card-auth.p12"
+    },
+    {
+      "role": "card_authentication_certificate",
+      "source": "cards/ICAM_Card_Objects/01_Golden_PIV/6 - ICAM_PIV_Card_Auth_SP_800-73-4.crt",
+      "destination": "certs/card-auth.crt"
+    }
+  ]
+}

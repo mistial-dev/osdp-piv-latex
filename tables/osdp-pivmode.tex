@@ -6,5 +6,8 @@
   \PacketRow{2}{MpFragmentSize}{Length of the fragment payload, least-significant byte first.}{0x0000--0xFFFF}
   \PacketRow{1}{Config Count}{Number of configuration entries (1--32).}{0x01--0x20}
   \PacketRow{1}{Global Interface Mask}{Bitmask limiting interfaces available to all configurations (bit~0 contact, bit~1 contactless, bit~3 Bluetooth; bit~2 reserved and set to zero).}{0x00--0x0B}
-  \PacketRow{0--n}{TLV Data}{Sequence of Configuration Entry TLVs (Tag \texttt{0x01}) that follow the mask.}{--}
+  \PacketRow{4}{Series Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000--0xFFFFFFFF}
+  \PacketRow{4}{Sequence Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000--0xFFFFFFFF}
+  \PacketRow{32}{Supplemental Entropy}{Conditional fixed-width field present only when PIV Auto is enabled. All zeroes are permitted but not recommended.}{32 octets}
+  \PacketRow{0--n}{TLV Data}{Sequence of Configuration Entry TLVs (Tag \texttt{0x01}) that follow the Global Interface Mask, or follow the conditional PIV Auto fields when PIV Auto is enabled.}{--}
 \end{PacketTable}

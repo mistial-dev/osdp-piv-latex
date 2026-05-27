@@ -1,6 +1,6 @@
 \section{New or Enhanced PIV Commands}
 
-This section introduces commands defined exclusively for the OSDP 2.3 Enhanced PIV profile.
+This section introduces commands defined exclusively for the OSDP 3.0 Enhanced PIV profile.
 
 \subsection{PIV Put Data (osdp\_PIVPUTDATA)}
 
@@ -20,11 +20,11 @@ PDs \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported when the com
 
 \subsection{Card Status Reply (osdp\_CARDSTATUSR)}
 
-In response to \texttt{osdp\_CARDSTATUS}, the PD reports a ready-to-proceed credential state after completing its card-present workflow (power, application selection, and required reads). PDs \textbf{SHALL NOT} send \texttt{osdp\_CARDSTATUSR} unsolicited on \texttt{osdp\_POLL}. Controllers \textbf{SHOULD} continue to use legacy \texttt{osdp\_RAW} poll replies as the single aggregated “card presented and data acquired” indication; PIN usage policy and VCI connectivity \textbf{SHALL NOT} be included in unsolicited poll indications. Detailed readiness (credential type, selected AID, cached data, and readiness flags) \textbf{SHALL} be returned only in solicited \texttt{osdp\_CARDSTATUSR}.
+In response to \texttt{osdp\_CARDSTATUS}, the PD reports a ready-to-proceed credential state after completing its card-present workflow (power, application selection, and required reads). PDs \textbf{SHALL NOT} send \texttt{osdp\_CARDSTATUSR} unsolicited on \texttt{osdp\_POLL}. Controllers \textbf{SHOULD} continue to use legacy \texttt{osdp\_RAW} poll replies as the single aggregated “card presented and data acquired” indication; PIN usage policy and VCI connectivity \textbf{SHALL NOT} be included in unsolicited poll indications. Detailed readiness (credential type, selected AID, cached data, and readiness flags) \textbf{SHALL} be returned only in solicited \texttt{osdp\_CARDSTATUSR}. When VCI is established, the reply reports both the secure messaging CVC IIN and the loaded anchor IIN used by the PD. These values are identical for direct CVC verification and differ when an Intermediate CVC is used. The PD \textbf{SHALL} set the \emph{VCI Trust Anchor ID} to the identifier assigned in \texttt{osdp\_PIV\_VCILOADTA}; this value \textbf{SHALL} correspond to an entry in the \texttt{osdp\_PIV\_VCITASTATUSR} inventory whose IIN matches the \emph{VCI Anchor IIN} field, so that the ACU can correlate reported VCI state with the anchor management record.
 
 \input{tables/osdp-cardstatusr}
 
-A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_NAK} when the command is unsupported. For credential-side failures encountered while preparing status, the PD \textbf{MAY} follow the legacy flow (no \texttt{osdp\_CARDSTATUSR} data) and, if available, report details via \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL}. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}) only after the PD has completed its preparation. When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe stable readiness (for example whether a secure channel is established) and whether the presented credential requires a pairing code; transient negotiation state \textbf{SHALL NOT} be reported. If the credential is removed before preparation completes, the PD \textbf{MAY} report the condition via \texttt{osdp\_PDERROR} (for example \texttt{0x1027}) instead of \texttt{osdp\_CARDSTATUSR}. \texttt{osdp\_CARDSTATUSR} is sent only in response to a matching \texttt{osdp\_CARDSTATUS} request.
+A PD that cannot provide the requested status \textbf{SHALL} return \texttt{osdp\_NAK} when the command is unsupported. For credential-side failures encountered while preparing status, the PD \textbf{MAY} follow the legacy flow (no \texttt{osdp\_CARDSTATUSR} data) and, if available, report details via \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL}. Successful replies include the entire selected AID (when available) and any PIN Usage Policy bytes read from the credential’s Discovery Object (tag \texttt{0x5F2F}) only after the PD has completed its preparation. When no PIV PIN Usage Policy is present, the PD \textbf{SHALL} report a length of zero and omit the bytes. The VCI fields describe stable readiness (for example whether a secure channel is established) and the IIN evidence the ACU needs for validation; transient negotiation state \textbf{SHALL NOT} be reported. If the credential is removed before preparation completes, the PD \textbf{MAY} report the condition via \texttt{osdp\_PDERROR} (for example \texttt{0x1027}) instead of \texttt{osdp\_CARDSTATUSR}. \texttt{osdp\_CARDSTATUSR} is sent only in response to a matching \texttt{osdp\_CARDSTATUS} request.
 
 \subsection{PIV Secure PIN Entry (osdp\_PIVSPE)}
 
@@ -38,7 +38,9 @@ The \texttt{osdp\_PIVSPE} command (command code \texttt{0xAA}, tentative) instru
 
 Controllers select an \emph{SPE Mode} to match the desired workflow (status query, contact PIN verification, VCI pre-cache/execute, PIN caching, or abort). Modes that rely on VCI (for example \texttt{0x02} and \texttt{0x03}) require the PD to have established VCI beforehand. \emph{Start Timeout} and \emph{Inter-key Timeout} values of zero disable the respective timer. \emph{Cache Validity} is expressed in seconds (LSB first); a value of zero disables PIN caching. If a mode requests PIN caching, the PD \textbf{SHALL NOT} transmit the PIN to the ACU.
 
-A successful request is acknowledged with \texttt{osdp\_ACK}. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Credential-side outcomes (for example incorrect parameters, security status not satisfied, or VCI not established) \textbf{SHALL} be reported in the subsequent \texttt{osdp\_PIVSPER} result code per Table~\ref{tab:pivsper-results}. After issuing \texttt{osdp\_PIVSPE}, the ACU \textbf{SHALL NOT} send other PIV commands until a corresponding \texttt{osdp\_PIVSPER} reply is received.
+Each \texttt{osdp\_PIVSPE} command initiates exactly one PIN-entry session. When the PD returns \texttt{osdp\_PIVSPER}, the SPE session terminates unconditionally---including on PIN mismatch---regardless of whether the credential remains present. The ACU \textbf{MAY} re-issue \texttt{osdp\_PIVSPE} to permit an additional attempt; it \textbf{SHOULD} use the \emph{Attempts Remaining} count from the preceding \texttt{osdp\_PIVSPER} to inform its retry policy.
+
+A successful request is acknowledged with \texttt{osdp\_ACK}. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Credential-side outcomes (for example credential removal, incorrect parameters, security status not satisfied, or VCI not established) \textbf{SHALL} be reported in the subsequent \texttt{osdp\_PIVSPER} result code per Table~\ref{tab:pivsper-results}. After issuing \texttt{osdp\_PIVSPE}, the ACU \textbf{SHALL NOT} send other PIV commands until a corresponding \texttt{osdp\_PIVSPER} reply is received.
 
 \subsection{PIV Secure PIN Entry Reply (osdp\_PIVSPER)}
 
@@ -58,7 +60,7 @@ The \texttt{osdp\_PIVBIOMATCH} command (command code \texttt{0xAB}, tentative) i
 
 \input{tables/osdp-pivbiomatch-types}
 
-Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, where applicable (e.g., TWIC contactless), to have a valid privacy key loaded via \texttt{osdp\_PIV\_LOADTPK}. On-card flows require the credential to support OCC. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. If credential prerequisites are not met, the PD \textbf{MAY} report the condition via \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL} using one of the PIV error codes (for example, \texttt{0x1020} function not supported by credential, \texttt{0x1023} credential security status not satisfied, \texttt{0x1025} VCI not established, or \texttt{0x1027} credential not present/removed).
+Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, where applicable (e.g., TWIC contactless), to have a valid privacy key loaded via \texttt{osdp\_PIV\_LOADTPK}. On-card flows require the credential to support OCC. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Credential-side match outcomes (for example PIN verification required or credential removal during operation) \textbf{SHALL} be reported in the subsequent \texttt{osdp\_PIVBIOMATCHR} result code per Table~\ref{tab:pivbiomatch-results}. Conditions that prevent the command from being attempted (for example unsupported credential function, missing VCI when required, or invalid command parameters) \textbf{MAY} be reported via \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL}.
 
 \subsection{PIV Biometric Match Reply (osdp\_PIVBIOMATCHR)}
 
@@ -66,11 +68,15 @@ After \texttt{osdp\_PIVBIOMATCH} completes, the PD reports the result as a poll 
 
 \input{tables/osdp-pivbiomatchr}
 
+When \emph{Result} is \texttt{0x00} (off-card match success), the PD \textbf{SHALL} include the 32-byte SHA-256 hash of the biometric template tag \texttt{0xBC} data field in the reply. For on-card match success (\emph{Result} \texttt{0x09}) and for all failure result codes, the PD \textbf{SHALL} omit the hash field; ACUs \textbf{SHALL NOT} rely on a hash received alongside any result other than \texttt{0x00}.
+
+Off-card biometric comparison demonstrates only that the live sample matched template data presented to the PD. Because off-card biometric objects can be copied or duplicated, an off-card biometric match does not by itself prove authenticity of the credential. On-card biometric comparison is a credential-controlled assertion; the biometric object may be attacker controlled and the PD does not receive the template data being matched. To obtain cryptographic proof associated with an on-card biometric success, the ACU \textbf{SHALL} perform an additional authentication using an appropriately verified credential key after the successful on-card comparison.
+
 \input{tables/osdp-pivbiomatch-results}
 
 \subsection{TWIC Privacy Key Load (osdp\_PIV\_LOADTPK)}
 
-The \texttt{osdp\_PIV\_LOADTPK} command (command code \texttt{0xAC}, tentative) instructs the PD to cache a TWIC Privacy Key (TPK) for use with subsequent biometric operations against a TWIC credential. PDs \textbf{SHALL} advertise support for TWIC biometric processing via Function Code~14 before controllers attempt to use this command.
+The \texttt{osdp\_PIV\_LOADTPK} command (command code \texttt{0xAC}, tentative) instructs the PD to cache a TWIC Privacy Key (TPK) for use with subsequent biometric operations against a TWIC credential. Function Code~14 is the biometric-support compliance byte; before using this command, controllers \textbf{SHOULD} verify that Function Code~14 advertises the OSDP~3.0 biometric command set and the relevant biometric modality bits for the intended TWIC operation.
 
 \input{tables/osdp-loadtpk}
 
@@ -84,9 +90,12 @@ The \texttt{osdp\_PIV\_XMITPAIRING} command (command code \texttt{0xAD}, tentati
 
 The pairing code is encoded as eight ASCII digits (\texttt{'0'}--\texttt{'9'}). If no PIV application is selected, the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0005}. Otherwise, the PD \textbf{SHALL} accept the pairing code whether or not VCI (Virtual Contact Interface) secure messaging is already established and use it when required by the credential’s Discovery Object PIN Usage Policy (for example when bit~4 is set and bit~3 is clear in the first byte). When VCI secure messaging is already active or the credential does not require pairing to establish VCI, the PD \textbf{MAY} ignore the supplied code after acknowledging receipt. PDs \textbf{SHALL} clear any stored pairing code when VCI is torn down or when the active PIV mode changes.
 
+\paragraph{VCI security preconditions}
+VCI trust-anchor load/status, VCI pairing-code transmit, VCI establishment, and PIV operations that depend on VCI \textbf{SHALL} be accepted only when OSDP Secure Channel 2.0 is active between the ACU and PD. A PD \textbf{SHALL} reject VCI-related functionality when operating with factory/default SCBK or other factory keys. Security-precondition failures \textbf{SHALL} be reported using \texttt{osdp\_PDERROR} \texttt{0x0006} where the command supports \texttt{osdp\_PDERROR}; otherwise the command’s existing failure reporting path applies.
+
 \subsection{Set PIV Mode (osdp\_PIVMODE)}\label{sec:pivmode}
 
-The \texttt{osdp\_PIVMODE} command (command code \texttt{0xAE}, tentative) defines the operating context for PIV, TWIC, and related credential transactions. OSDP~2.3 replaces the legacy “Application + AID” fields with a payload that begins with a required Global Interface Mask byte followed by a TLV list of configuration descriptors so controllers can specify multiple application profiles, preferred interfaces, and optional Application Identifiers. PDs \textbf{SHALL} advertise support via Function Code~13 bit~\texttt{0x04}.
+The \texttt{osdp\_PIVMODE} command (command code \texttt{0xAE}, tentative) defines the operating context for PIV, TWIC, and related credential transactions. OSDP~3.0 replaces the legacy “Application + AID” fields with a configuration payload that includes a required Global Interface Mask byte, PIV Auto challenge parameters when autonomous operation is enabled, and a TLV list of configuration descriptors so controllers can specify multiple application profiles, preferred interfaces, and optional Application Identifiers. PDs \textbf{SHALL} advertise support via Function Code~13 bit~\texttt{0x04}.
 
 \input{tables/osdp-pivmode}
 
@@ -98,13 +107,13 @@ Global and per-entry interface masks use the bit positions in Table~\ref{tab:piv
 
 \input{tables/osdp-pivmode-interfaces}
 
-After the flags, the payload uses standard multi-part framing fields and a configuration count (1--32). The count is followed immediately by the required Global Interface Mask byte. Each configuration appears as a TLV:
+After the flags, the payload uses standard multi-part framing fields and a configuration count (1--32). The count is followed by the required Global Interface Mask byte. If and only if PIV Auto is enabled in \emph{PIV Mode Flags}, the Global Interface Mask is followed by the Series Counter, Sequence Counter, and fixed 32-byte Supplemental Entropy field before the TLV list. When PIV Auto is not enabled, those three conditional fields are absent and the TLV list begins immediately after the Global Interface Mask. Each configuration appears as a TLV:
 
 \begin{itemize}
   \item \textbf{Global Interface Mask (required)} — One-byte mask (no tag) that limits the interfaces the PD may use for all configurations (see Table~\ref{tab:pivmode-interfaces}). A value of \texttt{0x00} indicates no global restriction; reserved bits \textbf{SHALL} be zero.
   \item \textbf{Configuration Entry (Tag \texttt{0x01})} — Contains the data-model identifier, a per-entry interface mask, the AID length, and the optional AID:
     \begin{itemize}
-      \item \emph{Data Model} (\texttt{0x01} PIV, \texttt{0x02} TWIC, values \texttt{0x04}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use).
+      \item \emph{Data Model} (\texttt{0x01} PIV, \texttt{0x02} TWIC, \texttt{0x03} CAC, values \texttt{0x04}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use). CAC entries use the same interface and AID encoding as PIV and TWIC entries.
       \item \emph{Interface Mask} — Uses the same bit positions as the global mask (Table~\ref{tab:pivmode-interfaces}) and \textbf{SHALL NOT} assert interfaces excluded by the Global Interface Mask. A value of \texttt{0x00} means “any interface permitted by the global mask.”
       \item \emph{AID Length} (0--16) and \emph{AID} bytes when provided. The legacy AID list referenced in earlier proposals is informational; it is not part of the official OSDP~2.2 specification.
     \end{itemize}
@@ -112,7 +121,23 @@ After the flags, the payload uses standard multi-part framing fields and a confi
 
 PDs process configuration entries in order, applying the global mask (when present) before honouring each entry’s mask. Invalid masks, unknown data-model identifiers, or malformed TLVs \textbf{SHALL} result in \texttt{osdp\_PDERROR} \texttt{0x0005}. Controllers \textbf{SHALL} send the command over a secure channel where required; the PD \textbf{SHALL} return \texttt{osdp\_PDERROR} \texttt{0x0006} if the necessary security conditions are not satisfied. Multi-part framing errors result in \texttt{osdp\_PDERROR} \texttt{0x0007}. If the PD cannot cache the requested configuration set, it \textbf{SHALL} respond with \texttt{osdp\_PDERROR} \texttt{0x1021}.
 
-When PIV Auto is enabled, PDs interrogate the credential on presentation, establish VCI automatically when possible, and advance through authentication without explicit ACU prompts. If a pairing code is required, the PD signals the state change via a solicited \texttt{osdp\_CARDSTATUSR} (not via unsolicited poll); the ACU then provides the code using \texttt{osdp\_PIV\_XMITPAIRING}.
+When PIV Auto is enabled, PDs interrogate the credential on presentation, establish VCI automatically when possible, derive the PIV Auto challenge, issue the PIV GENERAL AUTHENTICATE command, and report the signed response without additional ACU prompts. If a pairing code is required, the PD signals the state change via a solicited \texttt{osdp\_CARDSTATUSR} (not via unsolicited poll); the ACU then provides the code using \texttt{osdp\_PIV\_XMITPAIRING}.
+
+PIV Auto configuration \textbf{SHALL} be accepted only when OSDP Secure Channel~2.0 is active and the channel is not using a factory/default SCBK or other factory key material. A PD \textbf{SHALL} reject PIV Auto configuration or execution with \texttt{osdp\_PDERROR} \texttt{0x0006} when these preconditions are not met.
+
+When bit \texttt{0x01} of \emph{PIV Mode Flags} enables PIV Auto, the configuration \textbf{SHALL} specify a \emph{Series Counter}, a \emph{Sequence Counter}, and a 32-byte \emph{Supplemental Entropy} field. The supplemental entropy field is fixed width and \textbf{SHALL} always be present; all zeroes are permitted for compatibility but are not recommended. The ACU \textbf{SHALL} ensure that a series counter value does not repeat for the same PD and that no sequence counter value is issued more than once within a series. One conforming implementation strategy is to maintain a monotonic series counter that increments at every ACU boot, similar to the SNMP engine boots counter, and a monotonic sequence counter for challenges issued within that boot series.
+
+The PIV Auto challenge \textbf{SHALL} be derived using KMAC256 with customization string \texttt{OSDP-PIV-AUTO-CHALLENGE-v1}. The KDF input \textbf{SHALL} be a fixed-width template containing the series counter, sequence counter, credential FASC-N, credential UUID (or all zeroes when unavailable), challenged PIV key reference, PIV algorithm identifier, and the 32-byte supplemental entropy field. The KMAC key \textbf{SHALL} be derived from the active Secure Channel~2.0 session key material; PIV Auto challenge derivation \textbf{SHALL NOT} use static factory keys.
+
+\subsection{PIV Auto Status Reply (osdp\_PIVSTATUSR)}
+
+After a PIV Auto card challenge completes, the PD reports the result as a poll response using reply code \texttt{0x89} (tentative). The first \texttt{osdp\_POLL} response after completion \textbf{SHALL} contain \texttt{osdp\_PIVSTATUSR}; subsequent fragments, when required, \textbf{SHALL} use the same reply and advance \emph{MpOffset} until the complete status payload is delivered.
+
+\input{tables/osdp-pivstatusr}
+
+The reply reports the exact series and sequence counters used for the challenge, the FASC-N and UUID read from the credential, and the signed response returned by the credential. The ACU uses these fields to verify counter uniqueness, bind the response to the credential identity, and validate the signature and certificate path using ACU trust policy. The PD \textbf{SHALL} preserve the credential's signed response bytes as returned by the PIV operation, excluding transport status words such as SW1/SW2.
+
+If the complete signed response does not fit in one OSDP response, the PD \textbf{SHALL} fragment \texttt{osdp\_PIVSTATUSR} using the OSDP~2.2 multi-part convention: \emph{MpSizeTotal} is the total status payload size, \emph{MpOffset} is the zero-based offset of the fragment, and \emph{MpFragmentSize} is the number of payload bytes carried in that fragment. The fixed fields appear at offset zero; later fragments carry the next contiguous bytes of the signed response.
 
 \subsection{VCI Trust Anchor Load (osdp\_PIV\_VCILOADTA)}
 
@@ -120,17 +145,92 @@ The \texttt{osdp\_PIV\_VCILOADTA} command (command code \texttt{0xAF}, tentative
 
 \input{tables/osdp-vciloatda}
 
-The metadata block (operation, identifier, IIN, anchor length) appears only in the first fragment where \texttt{MpOffset = 0}; subsequent fragments carry additional anchor bytes. Controllers set \emph{Operation} to \texttt{0x00} to load or replace the anchor identified by \emph{Trust Anchor ID}. Set \emph{Operation} to \texttt{0x01} with \emph{Anchor Length} \texttt{0x0000} to delete the anchor. The \emph{Issuer Identifier Number (IIN)} is the leftmost eight bytes of the subjectKeyIdentifier in the content signing certificate used to protect the credential. The \emph{Anchor Length} declares the total size of the anchor payload; controllers shall send the exact number of bytes in one or more fragments.
+The metadata block (operation, identifier, IIN, anchor length) appears only in the first fragment where \texttt{MpOffset = 0}; subsequent fragments carry additional anchor bytes. Controllers set \emph{Operation} to \texttt{0x00} to load or replace the anchor identified by \emph{Trust Anchor ID}. Set \emph{Operation} to \texttt{0x01} with \emph{Anchor Length} \texttt{0x0000} to delete the anchor. The \emph{Issuer Identifier Number (IIN)} \textbf{SHALL} be the leftmost eight bytes of the subjectKeyIdentifier from the content-signing X.509 certificate associated with this anchor. This value \textbf{SHALL} match the IIN field (tag \texttt{0x42}) in the VCI trust anchor record.
 
-PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. A successful operation returns \texttt{osdp\_ACK}. Failures return:
+The \emph{Anchor Length} declares the exact total size of the variable-length VCI trust anchor record. For load operations, \texttt{MpSizeTotal} \textbf{SHALL} equal \emph{Anchor Length}, the sum of all accepted fragment lengths \textbf{SHALL} equal \emph{Anchor Length}, and no fragment \textbf{SHALL} extend beyond \emph{Anchor Length}. A conforming VCI trust anchor record \textbf{SHALL NOT} exceed 576 bytes (\texttt{0x0240}). The PD \textbf{SHALL} accept any valid record length from the minimum BER-TLV encoding through \texttt{0x0240}, subject to supported-key and storage-capacity checks.
+
+PD storage accounting for VCI trust anchors is variable-length. A PD \textbf{SHALL NOT} treat every anchor as consuming the maximum \texttt{0x0240} bytes unless that is the PD's documented physical allocation model. When reporting capacity, loading, replacing, or deleting anchors, the PD \textbf{SHALL} account for stored anchors by their actual \emph{Anchor Length} values and \textbf{SHALL} use the same accounting rule for both \texttt{osdp\_PIV\_VCITASTATUSR} \emph{Available Bytes} and \texttt{osdp\_PIV\_VCILOADTA} storage acceptance. A replacement operation \textbf{SHALL} be evaluated after releasing the storage occupied by the existing anchor with the same \emph{Trust Anchor ID}; if the replacement cannot be completed, the prior anchor \textbf{SHALL} remain available. A delete operation \textbf{SHALL} release the storage associated with the deleted anchor.
+
+\Needspace{14\baselineskip}
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{VCI Trust Anchor Record Format}
+  \label{tab:vci-trust-anchor-record-format}
+  \renewcommand{\arraystretch}{1.35}%
+  \begin{tabularx}{\linewidth}{|c|c|l|X|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Tag} &
+    \textcolor{PacketHeaderFg}{\bfseries Length} &
+    \textcolor{PacketHeaderFg}{\bfseries Name} &
+    \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
+    \texttt{0x7F50} & Variable & VCI Trust Anchor Record & OSDP-defined record used to verify a secure messaging CVC or an Intermediate CVC. \\\hline
+    \texttt{0x80} & 1 & Record Profile Identifier & \texttt{0x01}. \\\hline
+    \texttt{0x42} & 8 & Issuer Identifier Number & Anchor selector. This value \textbf{SHALL} match the IIN in the \texttt{osdp\_PIV\_VCILOADTA} metadata. \\\hline
+    \texttt{0x7F49} & 1--550 & SubjectPublicKeyInfo & DER-encoded X.509 SubjectPublicKeyInfo for the public key trusted by the ACU. Supported public-key algorithms are RSA public keys up to 4096 bits and EC public keys for P-256 or P-384. \\\hline
+  \end{tabularx}
+\end{center}
+\end{samepage}
+
+The VCI trust anchor record is intentionally not a NIST SP~800-73 Intermediate CVC and does not carry X.509 path-validation state. The ACU is responsible for selecting, loading, unloading, and independently validating the VCI anchors it permits a PD to use. The PD uses the record only as a local public-key verifier selected by IIN. The maximum record size is derived from the largest supported key case: a 550-byte RSA-4096 SubjectPublicKeyInfo plus the fixed fields above and BER-TLV length overhead. The resulting worst case is 573 bytes; this specification rounds the maximum accepted record size to 576 bytes.
+
+\paragraph{Use during VCI establishment}
+When the PD receives the secure messaging CVC from the credential, it \textbf{SHALL} first extract the Issuer Identification Number from tag \texttt{0x42}. If a loaded VCI trust anchor has a matching IIN, the PD \textbf{SHALL} use that anchor's SubjectPublicKeyInfo to verify the secure messaging CVC signature. If verification succeeds, the PD may continue VCI establishment using the public key in the secure messaging CVC.
+
+If no loaded VCI trust anchor matches the secure messaging CVC IIN, the PD \textbf{SHALL} retrieve the Secure Messaging Certificate Signer data object (PIV data object \texttt{0x1017}, tag \texttt{5FC122}) from the credential and inspect it for one Intermediate CVC (tag \texttt{0x7F21}). If the object is absent or no Intermediate CVC is present, validation fails. If an Intermediate CVC is present, the PD \textbf{SHALL} verify all of the following before continuing:
+\begin{itemize}
+  \item The secure messaging CVC IIN (tag \texttt{0x42}) equals the Subject Identifier (tag \texttt{0x5F20}) in the Intermediate CVC.
+  \item The Intermediate CVC Role Identifier (tag \texttt{0x5F4C}) is \texttt{0x12}.
+  \item A loaded VCI trust anchor exists whose IIN equals the Intermediate CVC IIN (tag \texttt{0x42}).
+  \item The Intermediate CVC signature verifies using the matching VCI trust anchor public key.
+  \item The secure messaging CVC signature verifies using the public key carried in the Intermediate CVC.
+\end{itemize}
+
+The PD validates only the immediate object above the secure messaging CVC: either the loaded trust anchor directly verifies the secure messaging CVC, or the loaded trust anchor verifies the Intermediate CVC that then verifies the secure messaging CVC. The PD \textbf{SHALL NOT} perform full X.509 path validation, validity-period evaluation, certificate-policy evaluation, or revocation processing for VCI trust anchors.
+
+\paragraph{ACU post-VCI validation}
+After receiving \texttt{osdp\_CARDSTATUSR} with VCI established, the ACU \textbf{SHALL} validate the content-signing certificate corresponding to the reported \emph{VCI Anchor IIN} before treating the VCI session as authoritative. The ACU \textbf{SHALL} perform all of the following:
+\begin{itemize}
+  \item Obtain the content-signing X.509 certificate. If the ACU does not already possess a cached copy whose subjectKeyIdentifier leftmost-eight-bytes equals the \emph{VCI Anchor IIN}, the ACU \textbf{SHALL} use \texttt{osdp\_PIVDATA} to retrieve the Secure Messaging Certificate Signer data object (PIV data object \texttt{0x1017}, tag \texttt{5FC122}) and extract the certificate from inner tag \texttt{0x70}.
+  \item Verify that the leftmost eight bytes of the certificate's subjectKeyIdentifier equal the \emph{VCI Anchor IIN} reported in \texttt{osdp\_CARDSTATUSR}.
+  \item Verify that the certificate's SubjectPublicKeyInfo matches the SubjectPublicKeyInfo stored in the loaded VCI trust anchor record for that IIN.
+  \item Verify that the certificate includes the PIV content-signing extended key usage OID (\texttt{2.16.840.1.101.3.6.7}) or the PIV-I equivalent (\texttt{2.16.840.1.101.3.8.7}).
+  \item Verify that the current time falls within the certificate's validity period (\texttt{notBefore} $\leq$ now $\leq$ \texttt{notAfter}). If the certificate has expired or is not yet valid, the ACU \textbf{SHALL} reject the VCI session and \textbf{SHALL} unload the corresponding trust anchor.
+  \item Perform X.509 path validation and revocation checking in accordance with the deployment's certificate validation policy.
+\end{itemize}
+
+\Needspace{10\baselineskip}
+\begin{samepage}
+\begin{center}
+  \captionsetup{type=table}
+  \captionof{table}{VCI Trust Anchor Examples from NIST Vectors}
+  \label{tab:vci-trust-anchor-examples}
+  \begin{tabular}{|p{3.1cm}|p{3.2cm}|p{3cm}|p{1.8cm}|p{2cm}|}
+    \hline
+    \rowcolor{PacketHeaderBg}
+    \textcolor{PacketHeaderFg}{\bfseries Vector} &
+    \textcolor{PacketHeaderFg}{\bfseries Content Signer} &
+    \textcolor{PacketHeaderFg}{\bfseries Anchor IIN} &
+    \textcolor{PacketHeaderFg}{\bfseries SPKI} &
+    \textcolor{PacketHeaderFg}{\bfseries Record} \\\hline
+    \texttt{card\_4} EC direct & Test PIV Content Signer 3 (EC P-256) & \texttt{1905976BDDCA823D} & 91 bytes & 110 bytes \\\hline
+    \texttt{card\_16} RSA intermediate & Test PIV-I Content Signer 1 (RSA-2048) & \texttt{4CC9C7B3A4F1C83E} & 294 bytes & 317 bytes \\\hline
+  \end{tabular}
+\end{center}
+\end{samepage}
+
+In the \texttt{card\_16} intermediate example, the secure messaging CVC IIN is \texttt{6F8FF48F42B3E22E}; the Intermediate CVC Subject Identifier (tag \texttt{0x5F20}) is also \texttt{6F8FF48F42B3E22E}; and the Intermediate CVC IIN (tag \texttt{0x42}) is \texttt{4CC9C7B3A4F1C83E}, matching the loaded RSA trust anchor.
+
+PDs \textbf{SHALL} reconstruct the anchor from the fragments before storing it. The PD \textbf{SHALL} verify that the reconstructed byte string is exactly \emph{Anchor Length} bytes and is a single \texttt{0x7F50} record before committing it to storage. A successful operation returns \texttt{osdp\_ACK}. Failures return:
 \begin{itemize}
   \item \texttt{osdp\_NAK} function-not-supported when the PD does not support trust-anchor caching.
-  \item \texttt{osdp\_PDERROR} \texttt{0x0005} for malformed metadata (unknown operation, reserved bits, invalid lengths).
+  \item \texttt{osdp\_PDERROR} \texttt{0x0005} for malformed metadata (unknown operation, reserved bits, invalid lengths, \texttt{MpSizeTotal} not equal to \emph{Anchor Length}, or a fragment range outside \emph{Anchor Length}).
   \item \texttt{osdp\_PDERROR} \texttt{0x0007} when multi-part sequencing fails.
   \item \texttt{osdp\_PDERROR} \texttt{0x1021} when the PD lacks storage space for the anchor.
 \end{itemize}
 
-PDs are not required to maintain a real-time clock; they need only verify that credential certificates presented later fall within the trust anchor’s validity period. Implementers may perform stricter date checks if desired. PDs may retain either the full anchor blob or a compact record containing the public key, issuer identifier, validity period, and anchor number so long as the supplied IIN remains available for matching.
+PDs are not required to maintain a real-time clock. PDs may retain either the supplied VCI trust anchor record or an equivalent internal representation so long as the public key and supplied IIN remain available for the verification flow above.
 
 Trust anchors may be stored in volatile or non-volatile memory at the PD’s discretion. Controllers should not assume retention beyond the device’s documented behaviour.
 
@@ -140,7 +240,7 @@ The \texttt{osdp\_PIV\_VCITASTATUS} command (command code \texttt{0xA6}, tentati
 
 \input{tables/osdp-vcitastatus}
 
-The PD first reports the total number of anchors and the remaining free bytes. Each record thereafter lists a trust anchor by ID, IIN, anchor length, and reserved attributes (transmitted as zero). Error responses follow the standard pattern: \texttt{osdp\_NAK} function-not-supported when the command is not implemented, and \texttt{osdp\_PDERROR} \texttt{0x0007} for multi-part errors.
+The PD first reports the total number of anchors and the remaining free bytes. \emph{Available Bytes} is the amount of trust-anchor storage that remains for additional variable-length VCI trust anchor record data after accounting for currently stored anchors by their actual \emph{Anchor Length} values. Each record thereafter lists a trust anchor by management ID, anchor selector IIN, anchor length, and reserved attributes (transmitted as zero). The IIN in this inventory is the IIN from the stored VCI trust anchor record and is not necessarily the secure messaging CVC IIN reported in \texttt{osdp\_CARDSTATUSR}. Error responses follow the standard pattern: \texttt{osdp\_NAK} function-not-supported when the command is not implemented, and \texttt{osdp\_PDERROR} \texttt{0x0007} for multi-part errors.
 
 \Needspace{14\baselineskip}
 \begin{samepage}
@@ -156,8 +256,8 @@ The PD first reports the total number of anchors and the remaining free bytes. E
     \textcolor{PacketHeaderFg}{\bfseries Meaning} &
     \textcolor{PacketHeaderFg}{\bfseries Value Range} \\\hline
     Trust Anchor ID & 1 byte & Identifier assigned by the ACU; reused to replace or delete an anchor. & 0x00--0xFF \\\hline
-    Issuer Identifier Number (IIN) & 8 bytes & Leftmost eight bytes of the subjectKeyIdentifier from the issuing content-signing certificate. & 0x00--0xFF \\\hline
-    Anchor Length & 2 bytes (LSB first) & Total size of the stored anchor or compact representation. & 0x0000--0xFFFF \\\hline
+    Issuer Identifier Number (IIN) & 8 bytes & Anchor selector supplied in the VCI trust anchor record. & 0x00--0xFF \\\hline
+    Anchor Length & 2 bytes (LSB first) & Total size of the stored variable-length VCI trust anchor record supplied for this anchor. & 0x0000--0x0240 \\\hline
     Attributes & 1 byte & Reserved for future use; transmitted as zero. & 0x00 \\\hline
   \end{tabular}
 \end{center}

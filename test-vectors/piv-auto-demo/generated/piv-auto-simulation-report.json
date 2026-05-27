@@ -1,0 +1,159 @@
+{
+  "summary": {
+    "status": "passed",
+    "profile": "PIV Auto demonstration",
+    "generated_at": "2026-05-27T14:42:39.200467+00:00",
+    "message": "PIV Auto challenge, CVC validation, poll response, and ACU validation completed."
+  },
+  "fixtures": {
+    "source": "test-vectors/piv-auto-demo",
+    "warning": "Reusable demonstration keys copied from gsa-icam-card-builder; not production material.",
+    "parties": [
+      {
+        "name": "root_ca",
+        "subject": "CN=ICAM Test Card Root CA,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "algorithm": "RSA-3072"
+      },
+      {
+        "name": "intermediate_ca_loaded_in_pd",
+        "subject": "CN=ICAM Test Card PIV RSA 2048 Signing CA,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "algorithm": "RSA-2048"
+      },
+      {
+        "name": "intermediate_cvc_signer",
+        "subject": "CN=ICAM Test Card PIV RSA Issued Intermediate CVC Signer,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "algorithm": "EC-secp256r1"
+      },
+      {
+        "name": "card_authentication",
+        "subject": "2.5.4.5=D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "algorithm": "RSA-2048"
+      }
+    ]
+  },
+  "acu_configuration": {
+    "command": "osdp_PIVMODE",
+    "piv_auto_enabled": true,
+    "requires_secure_channel_2": true,
+    "factory_keys_in_use": false,
+    "series_counter": 7,
+    "sequence_counter": 42,
+    "supplemental_entropy_hex": "00112233445566778899AABBCCDDEEFF102132435465768798A9BACBDCEDFE0F",
+    "supplemental_entropy_width_bytes": 32
+  },
+  "pd_validation": {
+    "loaded_anchor": {
+      "source_certificate": "certs/intermediate-ca-rsa2048.crt",
+      "iin": "3FDC04DB5C26E9A7",
+      "trust_anchor_record_length": 317,
+      "algorithm": "RSA-2048"
+    },
+    "intermediate_cvc": {
+      "present": true,
+      "issuer_iin": "3FDC04DB5C26E9A7",
+      "subject_identifier": "80C2F1649C8B273A",
+      "role": "0x12",
+      "signature_verified_with_loaded_anchor": true,
+      "length": 413
+    },
+    "secure_cvc": {
+      "issuer_iin": "80C2F1649C8B273A",
+      "subject_identifier": "3C7C4A39A2C0476B",
+      "signature_verified_with_intermediate_cvc": true,
+      "length": 424
+    },
+    "scope": "PD validates only the immediate CVC chain needed to trust the card response."
+  },
+  "kdf": {
+    "algorithm": "KMAC256",
+    "customization": "OSDP-PIV-AUTO-CHALLENGE-v1",
+    "sc_session_key_hex": "C001D00DC001D00DC001D00DC001D00D0123456789ABCDEFFEDCBA9876543210",
+    "fixed_template_hex": "4F5344502D5049562D4155544F01070000002A000000D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E709D49C7EFDD0432EACEA268AE905274C9E0700112233445566778899AABBCCDDEEFF102132435465768798A9BACBDCEDFE0F",
+    "challenge_hex": "7F74CBA79BAE9804EB09E4FCBB63CA61BC7BEF18375E274CDF50C7DB41BB172A"
+  },
+  "card_operation": {
+    "apdu": "GENERAL AUTHENTICATE, key reference 0x9E, RSA-2048",
+    "fascn_hex": "D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7",
+    "uuid": "09d49c7e-fdd0-432e-acea-268ae905274c",
+    "signed_response_hex": "44D8BB631AD25D0E26A412BA8E3B9822200336D335CC3E6959FA468F80704C08CCAC689C8EE1135AD81BBC0062266A34FD0C818223927B0B5F684080ABBEC2B3D05B0D94B17ACC4A9060968AACD3FDD9D742B39DE410A7CD8C839FDC7CCA59F9F8A4B9CB8263B68211E64EE39198CF4EF276C63CCA214AFC9FE98FE6D57B1F0997C78BC55BD25D80AF1FB093B401A0E95D298D3890D77439BA9DB5C48B948E3EF1824C5C4E1852FB9784CF050C559132A19C6B3C43058D057817F8DB72FF3052436B9BCAC18CFE43F8E6F68E81E3586F14A0FC22748386E701E59DE02A1A2C8F35BBC9ADF382D8782F53EAF3B2C1CE90FEC8F576351F86B450EF9D1557FB9796",
+    "signed_response_length": 256
+  },
+  "poll_response": {
+    "reply": "osdp_PIVSTATUSR",
+    "reply_code": "0x89",
+    "multi_part_fragment_size": 96,
+    "payload_length": 311,
+    "fragments": [
+      {
+        "reply": "osdp_PIVSTATUSR",
+        "reply_code": "0x89",
+        "total": 311,
+        "offset": 0,
+        "data_len": 96,
+        "data_hex": "0000070000002A000000D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E709D49C7EFDD0432EACEA268AE905274C9E07000144D8BB631AD25D0E26A412BA8E3B9822200336D335CC3E6959FA468F80704C08CCAC689C8EE1135AD8"
+      },
+      {
+        "reply": "osdp_PIVSTATUSR",
+        "reply_code": "0x89",
+        "total": 311,
+        "offset": 96,
+        "data_len": 96,
+        "data_hex": "1BBC0062266A34FD0C818223927B0B5F684080ABBEC2B3D05B0D94B17ACC4A9060968AACD3FDD9D742B39DE410A7CD8C839FDC7CCA59F9F8A4B9CB8263B68211E64EE39198CF4EF276C63CCA214AFC9FE98FE6D57B1F0997C78BC55BD25D80AF"
+      },
+      {
+        "reply": "osdp_PIVSTATUSR",
+        "reply_code": "0x89",
+        "total": 311,
+        "offset": 192,
+        "data_len": 96,
+        "data_hex": "1FB093B401A0E95D298D3890D77439BA9DB5C48B948E3EF1824C5C4E1852FB9784CF050C559132A19C6B3C43058D057817F8DB72FF3052436B9BCAC18CFE43F8E6F68E81E3586F14A0FC22748386E701E59DE02A1A2C8F35BBC9ADF382D8782F"
+      },
+      {
+        "reply": "osdp_PIVSTATUSR",
+        "reply_code": "0x89",
+        "total": 311,
+        "offset": 288,
+        "data_len": 23,
+        "data_hex": "53EAF3B2C1CE90FEC8F576351F86B450EF9D1557FB9796"
+      }
+    ]
+  },
+  "acu_validation": {
+    "x509_path": [
+      {
+        "certificate": "certs/root-ca.crt",
+        "subject": "CN=ICAM Test Card Root CA,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "trusted_root": true
+      },
+      {
+        "certificate": "certs/intermediate-ca-rsa2048.crt",
+        "subject": "CN=ICAM Test Card PIV RSA 2048 Signing CA,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "signature_verified_by": "root-ca.crt"
+      },
+      {
+        "certificate": "certs/intermediate-cvc-signer-p256.crt",
+        "subject": "CN=ICAM Test Card PIV RSA Issued Intermediate CVC Signer,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "signature_verified_by": "intermediate-ca-rsa2048.crt"
+      },
+      {
+        "certificate": "certs/card-auth.crt",
+        "subject": "2.5.4.5=D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7,OU=ICAM Test Cards,O=U.S. Government,C=US",
+        "signature_verified_by": "deployment PIV certificate path policy",
+        "note": "The simulated card authentication public key is bound to the PIV Auto exchange by the secure card CVC; the ACU still applies its normal PIV certificate path, time, policy, and revocation checks separately."
+      }
+    ],
+    "time_policy_revocation_note": "The ACU, not the PD, is responsible for certificate validity time, policy/EKU, and revocation decisions before accepting the establishment result.",
+    "card_response_signature_verified": true,
+    "counter_uniqueness_checked_by_acu": true
+  },
+  "generated_files": {
+    "trust_anchor": "test-vectors/piv-auto-demo/generated/loaded-intermediate-ca-trust-anchor.bin",
+    "intermediate_cvc": "test-vectors/piv-auto-demo/generated/intermediate-cvc-7f21.bin",
+    "secure_cvc": "test-vectors/piv-auto-demo/generated/secure-card-cvc-7f21.bin",
+    "pivstatusr_payload": "test-vectors/piv-auto-demo/generated/pivstatusr-payload.bin"
+  },
+  "result": {
+    "passed": true,
+    "failure_reason": null
+  }
+}

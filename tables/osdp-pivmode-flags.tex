@@ -8,7 +8,7 @@
     \hline
     \rowcolor{PacketHeaderBg}
     \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
-    0x01 & Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, and advances through the authentication flow without explicit ACU prompts. \\\hline
+    0x01 & Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, derives a KMAC256 challenge from the configured counters and entropy, and reports the signed response using \texttt{osdp\_PIVSTATUSR}. \\\hline
     0x02 & Permit VCI usage when available. \\\hline
     0x04 & Enforce FICAM strict mode (PIV applications only). \\\hline
   \end{tabular}

@@ -2,3 +2,12 @@
 build/
 ~$*
 reference/
+__pycache__/
+*.py[cod]
+main.aux
+main.fdb_latexmk
+main.fls
+main.log
+main.out
+main.pdf
+main.toc

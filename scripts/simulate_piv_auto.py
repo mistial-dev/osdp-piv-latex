@@ -11,8 +11,10 @@ in the flow is actually computed and verified:
 * the PD derives a PIV Auto challenge with KMAC256; and
 * the card signs the challenge with the card authentication private key.
 
-The fixtures are intentionally reusable demonstration keys copied from
-gsa-icam-card-builder. They must not be used for production systems.
+The card-authentication keys and certificates are reusable demonstration
+material copied from GSA FICAM's gsa-icam-card-builder. CVC and trust-anchor
+bytes are imported from NIST test-card VCI captures. None of these fixtures
+must be used for production systems.
 """
 
 from __future__ import annotations
@@ -21,11 +23,9 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from Crypto.Hash import KMAC256
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -33,21 +33,45 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import ExtensionOID
 
+from piv_auto_apdu import (
+    INFORMATIVE_LEGACY_PROFILE_IDS,
+    PROFILES,
+    PIV_AUTO_CHALLENGE_CUSTOMIZATION,
+    PIV_AUTO_PROFILE_IDS,
+    PIV_AUTO_KDK_CUSTOMIZATION,
+    derive_piv_auto_challenge,
+    derive_piv_auto_kdk,
+    general_authenticate_apdu,
+    parse_dynamic_auth_response,
+    profile_input,
+    simulate_card_response,
+    verify_card_response,
+)
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_FIXTURE_DIR = REPO_ROOT / "test-vectors" / "piv-auto-demo"
+DEFAULT_CVC_VECTOR_DIR = REPO_ROOT / "test-vectors" / "vci-trust-anchors" / "card-16-intermediate"
 
-KMAC_CUSTOMIZATION = b"OSDP-PIV-AUTO-CHALLENGE-v1"
 FASCN = bytes.fromhex("D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7")
 UUID = bytes.fromhex("09D49C7EFDD0432EACEA268AE905274C")
+DEFAULT_SC2_KEYS = bytes.fromhex(
+    "00112233445566778899AABBCCDDEEFF"
+    "102132435465768798A9BACBDCEDFE0F"
+    "FFEEDDCCBBAA99887766554433221100"
+)
 DEFAULT_SUPPLEMENTAL_ENTROPY = bytes.fromhex(
     "00112233445566778899AABBCCDDEEFF"
     "102132435465768798A9BACBDCEDFE0F"
 )
 
 OID_ECDSA_SHA256 = "1.2.840.10045.4.3.2"
+OID_ECDSA_SHA384 = "1.2.840.10045.4.3.3"
 OID_RSA_SHA256 = "1.2.840.113549.1.1.11"
+OID_RSA_SHA384 = "1.2.840.113549.1.1.12"
+OID_EC_P256 = "1.2.840.10045.3.1.7"
+OID_EC_P384 = "1.3.132.0.34"
 
 
 class SimulationFailure(RuntimeError):
@@ -149,6 +173,14 @@ def hexstr(data: bytes) -> str:
     return data.hex().upper()
 
 
+def display_path(path: Path) -> str:
+    """Return a stable repo-relative path when possible."""
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def cert_label(cert: x509.Certificate) -> str:
     """Return a compact certificate subject for log output."""
     return cert.subject.rfc4514_string()
@@ -211,8 +243,14 @@ def verify_signature(public_key: object, algorithm_oid: str, data: bytes, signat
     if isinstance(public_key, rsa.RSAPublicKey) and algorithm_oid == OID_RSA_SHA256:
         public_key.verify(signature, data, padding.PKCS1v15(), hashes.SHA256())
         return
+    if isinstance(public_key, rsa.RSAPublicKey) and algorithm_oid == OID_RSA_SHA384:
+        public_key.verify(signature, data, padding.PKCS1v15(), hashes.SHA384())
+        return
     if isinstance(public_key, ec.EllipticCurvePublicKey) and algorithm_oid == OID_ECDSA_SHA256:
         public_key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
+        return
+    if isinstance(public_key, ec.EllipticCurvePublicKey) and algorithm_oid == OID_ECDSA_SHA384:
+        public_key.verify(signature, data, ec.ECDSA(hashes.SHA384()))
         return
     raise ValueError(f"unsupported signature/public-key combination: {algorithm_oid}")
 
@@ -245,37 +283,25 @@ def parse_signature_object(value: bytes) -> tuple[str, bytes]:
     return algorithm_oid, bit_string[1][1:]
 
 
-def make_demo_cvc(
-    *,
-    issuer_iin: bytes,
-    subject_identifier: bytes,
-    role: int,
-    subject_cert: x509.Certificate,
-    signing_key: object,
-) -> bytes:
-    """Build a compact 7F21 CVC-like record and sign the child TLVs.
-
-    The proposal's trust-anchor work already moved away from trying to force
-    X.509 keys into the SP 800-73 intermediate CVC key object. For this demo the
-    public key is carried as DER SubjectPublicKeyInfo in tag 7F49, matching the
-    trust-anchor record's key representation.
-    """
-    spki = subject_cert.public_key().public_bytes(
-        serialization.Encoding.DER,
-        serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    signed_children = b"".join(
-        [
-            encode_tlv(b"\x5f\x29", b"\x80"),
-            encode_tlv(b"\x42", issuer_iin),
-            encode_tlv(b"\x5f\x20", subject_identifier),
-            encode_tlv(b"\x7f\x49", spki),
-            encode_tlv(b"\x5f\x4c", bytes([role])),
-        ]
-    )
-    algorithm_oid, signature = sign_bytes(signing_key, signed_children)
-    cvc_body = signed_children + encode_tlv(b"\x5f\x37", make_signature_object(algorithm_oid, signature))
-    return encode_tlv(b"\x7f\x21", cvc_body)
+def parse_public_key_object(value: bytes) -> dict[str, Any]:
+    """Parse the CVC public-key object used by the imported VCI vectors."""
+    fields = {tag.hex().upper(): field_value for tag, field_value, _ in children(value)}
+    oid_value = fields.get("06")
+    point = fields.get("86")
+    if oid_value is None or point is None:
+        raise ValueError("CVC public key object missing OID or public key point")
+    curve_oid = decode_oid(oid_value)
+    if curve_oid == OID_EC_P256:
+        curve: ec.EllipticCurve = ec.SECP256R1()
+    elif curve_oid == OID_EC_P384:
+        curve = ec.SECP384R1()
+    else:
+        raise ValueError(f"unsupported CVC curve OID: {curve_oid}")
+    return {
+        "curve_oid": curve_oid,
+        "point": point,
+        "public_key": ec.EllipticCurvePublicKey.from_encoded_point(curve, point),
+    }
 
 
 def parse_demo_cvc(cvc: bytes) -> dict[str, Any]:
@@ -295,17 +321,50 @@ def parse_demo_cvc(cvc: bytes) -> dict[str, Any]:
     if signature_value is None:
         raise ValueError("CVC is missing 5F37 signature")
     algorithm_oid, signature = parse_signature_object(signature_value)
-    public_key = serialization.load_der_public_key(fields[b"\x7f\x49"])
+    public_key_object = parse_public_key_object(fields[b"\x7f\x49"])
+    public_key = public_key_object["public_key"]
     return {
         "issuer_iin": fields[b"\x42"],
         "subject_identifier": fields[b"\x5f\x20"],
         "role": fields[b"\x5f\x4c"][0],
         "public_key": public_key,
+        "public_key_curve_oid": public_key_object["curve_oid"],
         "algorithm": key_algorithm(public_key),
         "signed_bytes": bytes(signed_tlvs),
         "signature_algorithm_oid": algorithm_oid,
         "signature": signature,
         "length": len(cvc),
+    }
+
+
+def load_vector_cvc_material(vector_dir: Path) -> dict[str, bytes]:
+    """Load CVC chain material imported from the checked-in VCI vector set."""
+    trust_anchor = vector_dir / "vci-trust-anchor-record.bin"
+    secure_cvc = vector_dir / "secure-messaging-cvc-7f21.bin"
+    smcs = vector_dir / "smcs-5fc122.bin"
+    missing = [str(path) for path in [trust_anchor, secure_cvc, smcs] if not path.exists()]
+    if missing:
+        raise FileNotFoundError(f"missing imported CVC vector material: {', '.join(missing)}")
+
+    smcs_data = smcs.read_bytes()
+    tag, value, _tlv, end = read_tlv(smcs_data, 0)
+    body = value if tag == b"\x53" and end == len(smcs_data) else smcs_data
+    intermediate_cvc = None
+    content_signing_certificate = None
+    for child_tag, child_value, child_tlv in children(body):
+        if child_tag == b"\x70":
+            content_signing_certificate = child_value
+        elif child_tag == b"\x7f\x21":
+            intermediate_cvc = child_tlv
+    if intermediate_cvc is None:
+        raise ValueError(f"{smcs} does not contain an Intermediate CVC")
+
+    return {
+        "trust_anchor": trust_anchor.read_bytes(),
+        "secure_cvc": secure_cvc.read_bytes(),
+        "smcs": smcs_data,
+        "intermediate_cvc": intermediate_cvc,
+        "content_signing_certificate": content_signing_certificate or b"",
     }
 
 
@@ -326,6 +385,8 @@ def fixed_width_template(
     series_counter: int,
     sequence_counter: int,
     supplemental_entropy: bytes,
+    key_ref: int = 0x9E,
+    algorithm_id: int = 0x07,
 ) -> bytes:
     """Build the fixed-width KDF input template used by PIV Auto.
 
@@ -343,38 +404,54 @@ def fixed_width_template(
             sequence_counter.to_bytes(4, "little"),
             FASCN,
             UUID,
-            b"\x9e",  # PIV card authentication key reference.
-            b"\x07",  # RSA 2048, matching SP 800-73 GENERAL AUTHENTICATE P1.
+            bytes([key_ref]),
+            bytes([algorithm_id]),
             supplemental_entropy,
         ]
     )
 
 
-def derive_challenge(sc_session_key: bytes, template: bytes) -> bytes:
-    """Derive a 32-byte PIV Auto challenge using KMAC256."""
-    kmac = KMAC256.new(key=sc_session_key, data=template, mac_len=32, custom=KMAC_CUSTOMIZATION)
-    return kmac.digest()
+def derive_challenge(sc2_session_keys: bytes, template: bytes, length: int = 32) -> tuple[bytes, bytes]:
+    """Derive a PIV Auto KDK and challenge digest."""
+    piv_auto_kdk = derive_piv_auto_kdk(sc2_session_keys)
+    return piv_auto_kdk, derive_piv_auto_challenge(piv_auto_kdk, template, length)
 
 
 def sign_piv_challenge(card_auth_key: object, challenge: bytes) -> bytes:
-    """Simulate the card's GENERAL AUTHENTICATE private-key operation."""
+    """Simulate the card's GENERAL AUTHENTICATE operation and return DAT bytes."""
     if isinstance(card_auth_key, rsa.RSAPrivateKey):
-        return card_auth_key.sign(challenge, padding.PKCS1v15(), hashes.SHA256())
+        profile = PROFILES["9e-rsa2048"]
+        response = simulate_card_response(profile, card_auth_key, profile_input(profile, challenge))
+        return response[:-2]
     if isinstance(card_auth_key, ec.EllipticCurvePrivateKey):
-        return card_auth_key.sign(challenge, ec.ECDSA(hashes.SHA256()))
+        signature = card_auth_key.sign(challenge, ec.ECDSA(hashes.SHA256(), deterministic_signing=True))
+        return encode_tlv(b"\x7C", encode_tlv(b"\x82", signature))
     raise TypeError(f"unsupported card key: {card_auth_key.__class__.__name__}")
 
 
-def verify_piv_response(card_auth_cert: x509.Certificate, challenge: bytes, signature: bytes) -> None:
+def verify_piv_response(card_auth_cert: x509.Certificate, challenge: bytes, dynamic_auth_template: bytes) -> bytes:
     """Verify the simulated card response with the card authentication cert."""
+    fields = parse_dynamic_auth_template(dynamic_auth_template)
+    signature = fields.get("82")
+    if signature is None:
+        raise ValueError("signed response is missing tag 82")
     public_key = card_auth_cert.public_key()
     if isinstance(public_key, rsa.RSAPublicKey):
-        public_key.verify(signature, challenge, padding.PKCS1v15(), hashes.SHA256())
-        return
+        profile = PROFILES["9e-rsa2048"]
+        verify_card_response(profile, public_key, profile_input(profile, challenge), dynamic_auth_template + b"\x90\x00")
+        return signature
     if isinstance(public_key, ec.EllipticCurvePublicKey):
         public_key.verify(signature, challenge, ec.ECDSA(hashes.SHA256()))
-        return
+        return signature
     raise TypeError(f"unsupported card cert key: {public_key.__class__.__name__}")
+
+
+def parse_dynamic_auth_template(template: bytes) -> dict[str, bytes]:
+    """Parse a returned 7C Dynamic Authentication Template without SW1/SW2."""
+    tag, dat_value, _tlv, end = read_tlv(template, 0)
+    if tag != b"\x7C" or end != len(template):
+        raise ValueError("signed response must be one 7C Dynamic Authentication Template")
+    return {tag.hex().upper(): value for tag, value, _ in children(dat_value)}
 
 
 def chunk_status_payload(payload: bytes, fragment_size: int) -> list[dict[str, Any]]:
@@ -395,8 +472,10 @@ def chunk_status_payload(payload: bytes, fragment_size: int) -> list[dict[str, A
     return fragments
 
 
-def build_status_payload(series_counter: int, sequence_counter: int, signature: bytes) -> bytes:
+def build_status_payload(series_counter: int, sequence_counter: int, signed_response: bytes) -> bytes:
     """Build the proposed PIVSTATUSR payload before multi-part wrapping."""
+    if UUID == b"\x00" * 16:
+        raise SimulationFailure("PIV Auto rejected: credential UUID is unavailable")
     fixed = b"".join(
         [
             b"\x00",  # Result: success.
@@ -407,15 +486,90 @@ def build_status_payload(series_counter: int, sequence_counter: int, signature: 
             UUID,
             b"\x9e",  # Key reference: Card Authentication.
             b"\x07",  # RSA-2048 signature.
-            len(signature).to_bytes(2, "little"),
+            len(signed_response).to_bytes(2, "little"),
         ]
     )
-    return fixed + signature
+    return fixed + signed_response
+
+
+def load_pem_private_key(path: Path) -> object:
+    """Load an unencrypted PEM private key."""
+    return serialization.load_pem_private_key(path.read_bytes(), password=None)
+
+
+def profile_key_material(profile_id: str, fixture_dir: Path) -> tuple[object, str]:
+    """Load deterministic committed key material for a PIV Auto profile."""
+    yubikey_dir = REPO_ROOT / "test-vectors" / "piv-auto-yubikey-material"
+    profile_dir = yubikey_dir / profile_id
+    if profile_dir.exists():
+        return (
+            load_pem_private_key(profile_dir / "private-key.pem"),
+            f"Committed YubiKey loader material in {display_path(profile_dir)}.",
+        )
+    if profile_id in {"9a-rsa2048", "9e-rsa2048"}:
+        material = load_pkcs12(fixture_dir / "source-p12" / "card-auth.p12", "card_authentication")
+        return (
+            material.private_key,
+            "Committed RSA-2048 card-authentication key in test-vectors/piv-auto-demo/source-p12, originally imported from GSA FICAM card-builder.",
+        )
+    if profile_id in {"9a-ecp256", "9e-ecp256"}:
+        material = load_pkcs12(
+            fixture_dir / "source-p12" / "intermediate-cvc-signer-p256.p12",
+            "demo_ec_p256_signer",
+        )
+        return (
+            material.private_key,
+            "Committed P-256 signing key in test-vectors/piv-auto-demo/source-p12, originally imported from GSA FICAM card-builder.",
+        )
+    raise ValueError(f"no committed deterministic key material for {profile_id}")
+
+
+def run_profile_crypto(
+    profile_id: str,
+    piv_auto_kdk: bytes,
+    series_counter: int,
+    sequence_counter: int,
+    supplemental_entropy: bytes,
+    fixture_dir: Path,
+) -> dict[str, Any]:
+    """Run APDU-perfect profile crypto with committed deterministic key material."""
+    profile = PROFILES[profile_id]
+    key, key_source = profile_key_material(profile_id, fixture_dir)
+    digest_len = 48 if profile.digest_name == "sha384" else 32
+    template = fixed_width_template(
+        series_counter=series_counter,
+        sequence_counter=sequence_counter,
+        supplemental_entropy=supplemental_entropy,
+        key_ref=profile.key_ref,
+        algorithm_id=profile.algorithm_id,
+    )
+    digest = derive_piv_auto_challenge(piv_auto_kdk, template, digest_len)
+    input_value = profile_input(profile, digest)
+    command = general_authenticate_apdu(profile, input_value)
+    response = simulate_card_response(profile, key, input_value)
+    verify_card_response(profile, key.public_key(), input_value, response)
+    fields = parse_dynamic_auth_response(response)
+    return {
+        "profile": profile.profile_id,
+        "label": profile.label,
+        "current": profile.current,
+        "piv_auto": profile.piv_auto,
+        "source": key_source,
+        "profile_note": profile.source_note,
+        "algorithm_id": f"0x{profile.algorithm_id:02X}",
+        "key_ref": f"0x{profile.key_ref:02X}",
+        "challenge_digest_hex": hexstr(digest),
+        "general_authenticate_command_hex": hexstr(command),
+        "dynamic_auth_response_hex": hexstr(response),
+        "response_82_length": len(fields["82"]),
+        "verified": True,
+    }
 
 
 def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
     """Run the positive flow or one selected negative demonstration."""
     fixture_dir = args.fixture_dir
+    cvc_vector_dir = args.cvc_vector_dir.resolve()
     root = load_pkcs12(fixture_dir / "source-p12" / "root-ca.p12", "root_ca")
     intermediate_ca = load_pkcs12(
         fixture_dir / "source-p12" / "intermediate-ca-rsa2048.p12",
@@ -427,30 +581,32 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
     )
     card_auth = load_pkcs12(fixture_dir / "source-p12" / "card-auth.p12", "card_authentication")
 
-    sc_session_key = bytes.fromhex(args.sc_key)
-    if len(sc_session_key) != 32:
-        raise ValueError("--sc-key must be 32 bytes for this KMAC256 demo")
+    sc2_session_keys = bytes.fromhex(args.sc2_session_keys)
+    if len(sc2_session_keys) != 48:
+        raise ValueError("--sc2-session-keys must be 48 bytes: S-ENC || S-MAC1 || S-MAC2")
     if args.negative == "factory-key":
-        sc_session_key = b"\x00" * 32
+        sc2_session_keys = b"\x00" * 48
 
     series_counter = args.series_counter
     sequence_counter = args.sequence_counter
     supplemental_entropy = bytes.fromhex(args.supplemental_entropy)
+    profile_ids = (PIV_AUTO_PROFILE_IDS + INFORMATIVE_LEGACY_PROFILE_IDS) if args.all_profiles else [args.profile]
     if args.negative == "duplicate-counter":
         prior_used_counters = {(series_counter, sequence_counter)}
     else:
         prior_used_counters = set()
 
-    now = datetime.now(timezone.utc)
     log: dict[str, Any] = {
         "summary": {
             "status": "running",
             "profile": "PIV Auto demonstration",
-            "generated_at": now.isoformat(),
         },
         "fixtures": {
             "source": "test-vectors/piv-auto-demo",
-            "warning": "Reusable demonstration keys copied from gsa-icam-card-builder; not production material.",
+            "warning": "Reusable demonstration keys and imported CVC vectors are not production material.",
+            "key_certificate_source": "Committed repository demonstration keys originally imported from GSA FICAM card-builder; generated YubiKey material covers live-capture profiles not present in that source set.",
+            "cvc_source": display_path(cvc_vector_dir),
+            "cvc_source_note": "CVCs and VCI trust-anchor bytes are imported from NIST test-card VCI capture artifacts.",
             "parties": [
                 {"name": root.name, "subject": cert_label(root.certificate), "algorithm": key_algorithm(root.certificate.public_key())},
                 {
@@ -474,7 +630,7 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
             "command": "osdp_PIVMODE",
             "piv_auto_enabled": True,
             "requires_secure_channel_2": True,
-            "factory_keys_in_use": sc_session_key == b"\x00" * 32,
+            "factory_keys_in_use": sc2_session_keys == b"\x00" * 48,
             "series_counter": series_counter,
             "sequence_counter": sequence_counter,
             "supplemental_entropy_hex": hexstr(supplemental_entropy),
@@ -482,36 +638,30 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
         },
     }
 
-    if sc_session_key == b"\x00" * 32:
+    if sc2_session_keys == b"\x00" * 48:
         raise SimulationFailure("PIV Auto rejected: SC 2.0 is using factory/default key material")
     if (series_counter, sequence_counter) in prior_used_counters:
         raise SimulationFailure("PIV Auto rejected: duplicate sequence counter within this series")
 
     verify_cert_signed_by(intermediate_ca.certificate, root.certificate)
     verify_cert_signed_by(cvc_signer.certificate, intermediate_ca.certificate)
-    trust_anchor_record = make_trust_anchor_record(intermediate_ca.certificate)
-    intermediate_cvc = make_demo_cvc(
-        issuer_iin=iin(intermediate_ca.certificate),
-        subject_identifier=iin(cvc_signer.certificate),
-        role=0x12,
-        subject_cert=cvc_signer.certificate,
-        signing_key=intermediate_ca.private_key,
-    )
-    secure_cvc = make_demo_cvc(
-        issuer_iin=iin(cvc_signer.certificate),
-        subject_identifier=iin(card_auth.certificate),
-        role=0x00,
-        subject_cert=card_auth.certificate,
-        signing_key=cvc_signer.private_key,
-    )
+    vector_material = load_vector_cvc_material(cvc_vector_dir)
+    trust_anchor_record = vector_material["trust_anchor"]
+    intermediate_cvc = vector_material["intermediate_cvc"]
+    secure_cvc = vector_material["secure_cvc"]
+    smcs = vector_material["smcs"]
 
     if args.negative == "wrong-anchor":
         wrong_anchor_cert = root.certificate
         loaded_anchor_iin = iin(wrong_anchor_cert)
         loaded_anchor_key = wrong_anchor_cert.public_key()
     else:
-        loaded_anchor_iin = iin(intermediate_ca.certificate)
-        loaded_anchor_key = intermediate_ca.certificate.public_key()
+        tag, anchor_value, _tlv, end = read_tlv(trust_anchor_record, 0)
+        if tag != b"\x7f\x50" or end != len(trust_anchor_record):
+            raise ValueError("imported trust anchor must be a single 7F50 record")
+        anchor_fields = {tag: value for tag, value, _ in children(anchor_value)}
+        loaded_anchor_iin = anchor_fields[b"\x42"]
+        loaded_anchor_key = serialization.load_der_public_key(anchor_fields[b"\x7f\x49"])
 
     parsed_intermediate = parse_demo_cvc(intermediate_cvc)
     parsed_secure = parse_demo_cvc(secure_cvc)
@@ -540,16 +690,16 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
         sequence_counter=sequence_counter,
         supplemental_entropy=supplemental_entropy,
     )
-    challenge = derive_challenge(sc_session_key, template)
-    signature = sign_piv_challenge(card_auth.private_key, challenge)
+    piv_auto_kdk, challenge = derive_challenge(sc2_session_keys, template)
+    signed_response = sign_piv_challenge(card_auth.private_key, challenge)
     if args.negative == "tampered-response":
-        signature = signature[:-1] + bytes([signature[-1] ^ 0x01])
+        signed_response = signed_response[:-1] + bytes([signed_response[-1] ^ 0x01])
     try:
-        verify_piv_response(card_auth.certificate, challenge, signature)
+        signature = verify_piv_response(card_auth.certificate, challenge, signed_response)
     except InvalidSignature as exc:
         raise SimulationFailure("ACU rejected signed response: card authentication signature is invalid") from exc
 
-    status_payload = build_status_payload(series_counter, sequence_counter, signature)
+    status_payload = build_status_payload(series_counter, sequence_counter, signed_response)
     fragments = chunk_status_payload(status_payload, args.fragment_size)
 
     generated_dir = fixture_dir / "generated"
@@ -557,13 +707,16 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
     (generated_dir / "loaded-intermediate-ca-trust-anchor.bin").write_bytes(trust_anchor_record)
     (generated_dir / "intermediate-cvc-7f21.bin").write_bytes(intermediate_cvc)
     (generated_dir / "secure-card-cvc-7f21.bin").write_bytes(secure_cvc)
+    (generated_dir / "smcs-5fc122.bin").write_bytes(smcs)
+    if vector_material["content_signing_certificate"]:
+        (generated_dir / "content-signing-certificate.der").write_bytes(vector_material["content_signing_certificate"])
     (generated_dir / "pivstatusr-payload.bin").write_bytes(status_payload)
 
     log.update(
         {
             "pd_validation": {
                 "loaded_anchor": {
-                    "source_certificate": "certs/intermediate-ca-rsa2048.crt",
+                    "source_vector": display_path(cvc_vector_dir),
                     "iin": hexstr(loaded_anchor_iin),
                     "trust_anchor_record_length": len(trust_anchor_record),
                     "algorithm": key_algorithm(loaded_anchor_key),
@@ -582,22 +735,33 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
                     "signature_verified_with_intermediate_cvc": True,
                     "length": parsed_secure["length"],
                 },
-                "scope": "PD validates only the immediate CVC chain needed to trust the card response.",
+                "scope": "PD validates the direct or intermediate CVC chain needed for VCI establishment.",
             },
             "kdf": {
-                "algorithm": "KMAC256",
-                "customization": KMAC_CUSTOMIZATION.decode("ascii"),
-                "sc_session_key_hex": hexstr(sc_session_key),
+                "kdk_algorithm": "KMAC256",
+                "kdk_customization": PIV_AUTO_KDK_CUSTOMIZATION.decode("ascii"),
+                "sc2_session_keys_hex": hexstr(sc2_session_keys),
+                "piv_auto_kdk_hex": hexstr(piv_auto_kdk),
+                "challenge_algorithm": "KMAC256",
+                "challenge_customization": PIV_AUTO_CHALLENGE_CUSTOMIZATION.decode("ascii"),
                 "fixed_template_hex": hexstr(template),
+                "challenge_length": len(challenge),
                 "challenge_hex": hexstr(challenge),
             },
             "card_operation": {
                 "apdu": "GENERAL AUTHENTICATE, key reference 0x9E, RSA-2048",
+                "general_authenticate_command_hex": hexstr(general_authenticate_apdu(PROFILES["9e-rsa2048"], profile_input(PROFILES["9e-rsa2048"], challenge))),
                 "fascn_hex": hexstr(FASCN),
                 "uuid": "09d49c7e-fdd0-432e-acea-268ae905274c",
-                "signed_response_hex": hexstr(signature),
-                "signed_response_length": len(signature),
+                "signed_response_hex": hexstr(signed_response),
+                "signed_response_length": len(signed_response),
+                "response_82_hex": hexstr(signature),
+                "response_82_length": len(signature),
             },
+            "profile_coverage": [
+                run_profile_crypto(profile_id, piv_auto_kdk, series_counter, sequence_counter, supplemental_entropy, fixture_dir)
+                for profile_id in profile_ids
+            ],
             "poll_response": {
                 "reply": "osdp_PIVSTATUSR",
                 "reply_code": "0x89",
@@ -623,9 +787,10 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
                         "subject": cert_label(card_auth.certificate),
                         "signature_verified_by": "deployment PIV certificate path policy",
                         "note": (
-                            "The simulated card authentication public key is bound to the PIV Auto "
-                            "exchange by the secure card CVC; the ACU still applies its normal PIV "
-                            "certificate path, time, policy, and revocation checks separately."
+                            "The secure messaging CVC evidence and the PIV Auto card-authentication "
+                            "key are separate fixture sources. The ACU accepts the PIV Auto response "
+                            "only after applying its normal PIV certificate path, time, policy, and "
+                            "revocation checks to the card-authentication certificate."
                         ),
                     },
                 ],
@@ -640,6 +805,8 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
                 "trust_anchor": "test-vectors/piv-auto-demo/generated/loaded-intermediate-ca-trust-anchor.bin",
                 "intermediate_cvc": "test-vectors/piv-auto-demo/generated/intermediate-cvc-7f21.bin",
                 "secure_cvc": "test-vectors/piv-auto-demo/generated/secure-card-cvc-7f21.bin",
+                "smcs": "test-vectors/piv-auto-demo/generated/smcs-5fc122.bin",
+                "content_signing_certificate": "test-vectors/piv-auto-demo/generated/content-signing-certificate.der",
                 "pivstatusr_payload": "test-vectors/piv-auto-demo/generated/pivstatusr-payload.bin",
             },
             "result": {"passed": True, "failure_reason": None},
@@ -653,18 +820,30 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
+    parser.add_argument(
+        "--cvc-vector-dir",
+        type=Path,
+        default=DEFAULT_CVC_VECTOR_DIR,
+        help="Directory containing imported VCI CVC/trust-anchor vector artifacts",
+    )
     parser.add_argument("--series-counter", type=int, default=7)
     parser.add_argument("--sequence-counter", type=int, default=42)
     parser.add_argument("--fragment-size", type=int, default=96)
+    parser.add_argument("--profile", choices=sorted(PIV_AUTO_PROFILE_IDS + INFORMATIVE_LEGACY_PROFILE_IDS), default="9e-rsa2048")
+    parser.add_argument(
+        "--all-profiles",
+        action="store_true",
+        help="Exercise supported PIV Auto profiles plus informative legacy test-only profiles",
+    )
     parser.add_argument(
         "--supplemental-entropy",
         default=hexstr(DEFAULT_SUPPLEMENTAL_ENTROPY),
         help="32-byte supplemental entropy as hex; all zeroes are allowed but not recommended",
     )
     parser.add_argument(
-        "--sc-key",
-        default="C001D00DC001D00DC001D00DC001D00D0123456789ABCDEFFEDCBA9876543210",
-        help="32-byte simulated SC 2.0 session key as hex",
+        "--sc2-session-keys",
+        default=hexstr(DEFAULT_SC2_KEYS),
+        help="48-byte S-ENC || S-MAC1 || S-MAC2 simulated SC 2.0 session-key material as hex",
     )
     parser.add_argument(
         "--negative",

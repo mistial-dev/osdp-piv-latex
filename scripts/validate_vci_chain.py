@@ -285,6 +285,8 @@ def parse_smcs(data: bytes) -> dict[str, Any]:
         if end != len(data):
             raise ValueError("5FC122 data has trailing bytes after 53 object")
         body = value
+    elif tag == b"\x7f\x21" and end == len(data):
+        body = data
     else:
         body = data
     cert_der = None
@@ -603,10 +605,10 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
             "path": path,
             "checks": human_check_steps(steps),
             "plain_english_scope": (
-                "The PD validates only the immediate signer of the secure messaging CVC. "
-                "It does not validate X.509 path, time, policy, or revocation."
+                "The PD validates the direct or intermediate CVC chain needed to establish VCI. "
+                "It does not perform X.509 path, time, policy, or revocation checks; those are ACU policy checks."
             ),
-            "validates_only_immediate_cvc_signer": True,
+            "validates_vci_cvc_chain_only": True,
             "does_not_validate_x509_time_path_policy_or_revocation": True,
         },
         "acu_validation": acu_report,

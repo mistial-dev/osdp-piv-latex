@@ -1,26 +1,11 @@
-\Needspace{12\baselineskip}
-\begin{samepage}
-\begin{center}
-  \captionsetup{type=table}
-  \captionof{table}{Card Status Reply (osdp\_CARDSTATUSR)}
-  \setlength{\tabcolsep}{6pt}
-  \renewcommand{\arraystretch}{1.35}
-  \begin{tabularx}{\linewidth}{|c|l|X|l|}
-    \hline
-    \rowcolor{PacketHeaderBg}
-    \textcolor{PacketHeaderFg}{\bfseries Size (bytes)} &
-    \textcolor{PacketHeaderFg}{\bfseries Name} &
-    \textcolor{PacketHeaderFg}{\bfseries Meaning} &
-    \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
-    1 & CMND & Reply identifier. & 0x85 (tentative) \\\hline
-    1 & Detected Credential Type & Current card interface: \texttt{0x00} none, \texttt{0x01} ISO~7816 contact, \texttt{0x02} ISO~14443 contactless, \texttt{0x03} other ISO~7816 credential (for example DESFire, Seos), \texttt{0x04} low-frequency credential, \texttt{0x05} unknown type, \texttt{0x06}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use. & 0x00--0xFF \\\hline
-    1 & VCI Status & \texttt{0x00} VCI not established, \texttt{0x01} VCI established. Values \texttt{0x02}--\texttt{0x7F} reserved, \texttt{0x80}--\texttt{0xFF} private use. & 0x00--0xFF \\\hline
-    1 & VCI Trust Anchor ID & The Trust Anchor ID used by the PD during VCI establishment. The PD \textbf{SHALL} set this field to the identifier assigned in \texttt{osdp\_PIV\_VCILOADTA}; this value \textbf{SHALL} correspond to an entry in the \texttt{osdp\_PIV\_VCITASTATUSR} inventory whose IIN matches the \emph{VCI Anchor IIN} field. Set to \texttt{0x00} when VCI is not established. & 0x00--0xFF \\\hline
-    8 & VCI CVC IIN & Issuer Identification Number from the secure messaging CVC tag \texttt{0x42}. Set to all zero when VCI is not established. & 0x00--0xFF \\\hline
-    8 & VCI Anchor IIN & Issuer Identification Number of the loaded VCI trust anchor used by the PD. Set to all zero when VCI is not established or no anchor was used. & 0x00--0xFF \\\hline
-    2 & PIN Usage Policy & PIN Usage Policy bytes (tag \texttt{0x5F2F}) returned verbatim when available. A value of \texttt{0xFFFF} indicates the policy is not present or has not yet been read. & 0x0000--0xFFFF \\\hline
-    1 & Selected AID Length & Length (0--16) of the selected AID. \texttt{0x00} indicates no application is currently selected. & 0x00--0x10 \\\hline
-    0--16 & Selected AID & Application Identifier read from the credential (for example from the FCI template). Present only when the length is non-zero. & 0x00--0xFF \\\hline
-  \end{tabularx}
-\end{center}
-\end{samepage}
+\begin{PacketTable}{Card Status Reply (osdp\_CARDSTATUSR)}
+  \PacketRow{1}{CMND}{Reply identifier.}{0x85 (tentative)}
+  \PacketRow{1}{Detected Credential Type}{Current card interface: \code{0x00} none, \code{0x01} ISO~7816 contact, \code{0x02} ISO~14443 contactless, \code{0x03} other ISO~7816 credential (for example DESFire, Seos), \code{0x04} low-frequency credential, \code{0x05} unknown type, \code{0x06}-\code{0x7F} reserved, \code{0x80}-\code{0xFF} private use.}{0x00-0xFF}
+  \PacketRow{1}{VCI Status}{\code{0x00} VCI not established, \code{0x01} VCI established. Values \code{0x02}-\code{0x7F} reserved, \code{0x80}-\code{0xFF} private use.}{0x00-0xFF}
+  \PacketRow{1}{VCI Trust Anchor ID}{The Trust Anchor ID used by the PD during VCI establishment. The PD \textbf{SHALL} set this field to the identifier assigned in \code{osdp_PIV_VCILOADTA}; this value \textbf{SHALL} correspond to an entry in the \code{osdp_PIV_VCITASTATUSR} inventory whose IIN matches the \emph{VCI Anchor IIN} field. Set to \code{0x00} when VCI is not established.}{0x00-0xFF}
+  \PacketRow{8}{VCI CVC IIN}{Issuer Identification Number from the secure messaging CVC tag \code{0x42}. Set to all zero when VCI is not established.}{0x00-0xFF}
+  \PacketRow{8}{VCI Anchor IIN}{Issuer Identification Number of the loaded VCI trust anchor used by the PD. Set to all zero when VCI is not established or no anchor was used.}{0x00-0xFF}
+  \PacketRow{2}{PIN Usage Policy}{PIN Usage Policy bytes (tag \code{0x5F2F}) returned verbatim when available. A value of \code{0xFFFF} indicates the policy is not present or has not yet been read.}{0x0000-0xFFFF}
+  \PacketRow{1}{Selected AID Length}{Length (0-16) of the selected AID. \code{0x00} indicates no application is currently selected.}{0x00-0x10}
+  \PacketRow{0-16}{Selected AID}{Application Identifier read from the credential (for example from the FCI template). Present only when the length is non-zero.}{0x00-0xFF}
+\end{PacketTable}

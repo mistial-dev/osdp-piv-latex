@@ -1,16 +1,6 @@
-\Needspace{12\baselineskip}
-\begin{samepage}
-\begin{center}
-  \captionsetup{type=table}
-  \captionof{table}{PIV Mode Flags}
+\begin{ValueDescriptionTable}{PIV Mode Flags}{Mask}
   \label{tab:pivmode-flags}
-  \begin{tabular}{|c|p{9cm}|}
-    \hline
-    \rowcolor{PacketHeaderBg}
-    \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
-    0x01 & Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, derives a KMAC256 challenge from the configured counters and entropy, and reports the signed response using \texttt{osdp\_PIVSTATUSR}. \\\hline
-    0x02 & Permit VCI usage when available. \\\hline
-    0x04 & Enforce FICAM strict mode (PIV applications only). \\\hline
-  \end{tabular}
-\end{center}
-\end{samepage}
+  \ValueDescriptionRow{0x01}{Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, derives a KMAC256 challenge from the configured counters and entropy, and reports the signed response using \code{osdp_PIVSTATUSR}.}
+  \ValueDescriptionRow{0x02}{Permit VCI usage when available.}
+  \ValueDescriptionRow{0x04}{Enforce FICAM strict mode (PIV applications only).}
+\end{ValueDescriptionTable}

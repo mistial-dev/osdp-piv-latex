@@ -1,0 +1,14 @@
+\begin{ValueDescriptionTable}{PIV Auto Status Result Codes}{Value}
+  \label{tab:pivstatusr-results}
+  \ValueDescriptionRow{0x00}{Success. \emph{Detail} is \code{0x00}, UUID is nonzero, and Signed Response carries the complete returned Dynamic Authentication Template.}
+  \ValueDescriptionRow{0x01}{Credential not present or removed before PIV Auto completed.}
+  \ValueDescriptionRow{0x02}{VCI establishment or required VCI validation failed.}
+  \ValueDescriptionRow{0x03}{Required credential data object, FASC-N, UUID, key, or certificate evidence is unavailable.}
+  \ValueDescriptionRow{0x04}{Requested PIV key reference or algorithm is not supported for PIV Auto.}
+  \ValueDescriptionRow{0x05}{Credential security status is not satisfied, including missing PIN or pairing preconditions.}
+  \ValueDescriptionRow{0x06}{Credential GENERAL AUTHENTICATE operation failed; \emph{Detail} may carry SW1\textbar SW2 when available.}
+  \ValueDescriptionRow{0x07}{Signed response verification failed.}
+  \ValueDescriptionRow{0x08}{Timeout or PD internal failure before a definitive credential result was available.}
+  \ValueDescriptionRow{0x09-0x7F}{Reserved for future standard result codes.}
+  \ValueDescriptionRow{0x80-0xFF}{Private use.}
+\end{ValueDescriptionTable}

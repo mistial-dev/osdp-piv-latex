@@ -1,18 +1,8 @@
-\Needspace{12\baselineskip}
-\begin{samepage}
-\begin{center}
-  \captionsetup{type=table}
-  \captionof{table}{PIV Mode Interface Masks}
+\begin{ValueDescriptionTable}{PIV Mode Interface Masks}{Mask}
   \label{tab:pivmode-interfaces}
-  \begin{tabular}{|c|p{9cm}|}
-    \hline
-    \rowcolor{PacketHeaderBg}
-    \textcolor{PacketHeaderFg}{\bfseries Mask} & \textcolor{PacketHeaderFg}{\bfseries Meaning} \\\hline
-    0x01 & Permit ISO~7816 contact credential interface use. \\\hline
-    0x02 & Permit ISO~14443 contactless credential interface use. \\\hline
-    0x04 & Reserved and \textbf{SHALL} be transmitted as zero. \\\hline
-    0x08 & Permit Bluetooth credential interface use. \\\hline
-    0x10--0x80 & Reserved and \textbf{SHALL} be transmitted as zero. \\\hline
-  \end{tabular}
-\end{center}
-\end{samepage}
+  \ValueDescriptionRow{0x01}{Permit ISO~7816 contact credential interface use.}
+  \ValueDescriptionRow{0x02}{Permit ISO~14443 contactless credential interface use.}
+  \ValueDescriptionRow{0x04}{Reserved and \textbf{SHALL} be transmitted as zero.}
+  \ValueDescriptionRow{0x08}{Permit Bluetooth credential interface use.}
+  \ValueDescriptionRow{0x10-0x80}{Reserved and \textbf{SHALL} be transmitted as zero.}
+\end{ValueDescriptionTable}

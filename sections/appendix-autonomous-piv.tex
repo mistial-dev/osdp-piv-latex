@@ -1,107 +1,127 @@
-\section{High-Speed Autonomous PIV Data Templates}
+\section{High-Speed Autonomous PIV Data Templates (Informative)}
 
-This appendix summarizes the data templates used by the SIA High-Speed Autonomous PIV flow. Bracketed values (for example \texttt{[010203]}) denote illustrative placeholders pulled from device identifiers or credential contents. Current PIV Auto challenge generation uses a fixed-width KMAC256 input template rather than the earlier ASN.1 CMAC template.
+This appendix records the PIV Auto challenge, ISO/IEC~7816
+\texttt{GENERAL AUTHENTICATE} templates, and fixture sources used by the
+demonstration vectors. The APDU examples are validated by the repository tests
+against the same helper code used by the simulator and replay tools.
 
-\begingroup\footnotesize
+\subsection{Vector Sources}
+\begin{SimpleTable}{PIV Auto Vector Sources}{3}
+  {|L{0.24\SimpleUsableWidth}|L{0.22\SimpleUsableWidth}|L{0.54\SimpleUsableWidth}|}
+  {\TableHeaderCell{Source} & \TableHeaderCell{Use} & \TableHeaderCell{Notes}}
+  NIST SD 33 / IR 8347 & Live-card APDU fixtures & Cards 2, 3, 4, 5, and 16 provide VCI contactless enrolment, OPACITY, and key-challenge transcripts. \\\hline
+  NIST SM/VCI captures & CVC and trust anchors & Provides validator-ready \ApduTemplate{7F21}, \ApduTemplate{5FC122}, and \ApduTemplate{7F50} objects. \\\hline
+  GSA FICAM card-builder & Local keys and certificates & Used only as reusable local test material for source-backed simulation. \\\hline
+  Generated YubiKey PIV & Missing algorithm profiles & Reusable RSA-1024, RSA-3072, and P-384 test keys are committed as public fixtures and loaded through \code{ykman piv}; RSA-1024 is informative legacy material only. \\\hline
+\end{SimpleTable}
+
+\subsection{Supported Profiles}
+\begin{SimpleTable}{PIV Auto Supported Profiles}{5}
+  {|L{0.18\SimpleUsableWidth}|K{0.10\SimpleUsableWidth}|K{0.15\SimpleUsableWidth}|L{0.12\SimpleUsableWidth}|L{0.45\SimpleUsableWidth}|}
+  {\TableHeaderCell{Profile} & \TableHeaderCell{Alg} & \TableHeaderCell{Key Ref} & \TableHeaderCell{PIV Auto} & \TableHeaderCell{Coverage}}
+  RSA-1024 & \ApduHeader{06} & \ApduHeader{9A}, \ApduHeader{9E} & No & Informative legacy/non-current test-only material. \\\hline
+  RSA-2048 & \ApduHeader{07} & \ApduHeader{9A}, \ApduHeader{9E} & Yes & NIST SD 33 cards 2, 3, 16; generated-card; GSA-backed simulation. \\\hline
+  RSA-3072 & \ApduHeader{05} & \ApduHeader{9A}, \ApduHeader{9E} & Yes & Committed YubiKey material; requires YubiKey firmware with RSA-3072 support. \\\hline
+  ECC P-256 & \ApduHeader{11} & \ApduHeader{9A}, \ApduHeader{9E} & Yes & NIST SD 33 cards 4 and 5; generated-card coverage. \\\hline
+  ECC P-384 & \ApduHeader{14} & \ApduHeader{9A}, \ApduHeader{9E} & Yes & Committed YubiKey material. NIST card 5 also provides \ApduHeader{9C}/\ApduHeader{9D} APDU examples. \\\hline
+\end{SimpleTable}
 
 \subsection{Fixed-Width KMAC Challenge Template}
-\begin{verbatim}
-4F 53 44 50 2D 50 49 56 2D 41 55 54 4F 01  # "OSDP-PIV-AUTO", version 1
-[07000000]                                  # Series Counter, 32-bit LSB first
-[2A000000]                                  # Sequence Counter, 32-bit LSB first
-[D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E7] # FASC-N
-[09D49C7EFDD0432EACEA268AE905274C]         # UUID, or 16 zero bytes
-[9E]                                        # PIV key reference
-[07]                                        # PIV algorithm identifier
-[00112233445566778899AABBCCDDEEFF...]       # 32-byte supplemental entropy
-\end{verbatim}
+\begin{SimpleTable}{PIV Auto KMAC Challenge Template}{4}
+  {|L{0.23\SimpleUsableWidth}|L{0.10\SimpleUsableWidth}|L{0.21\SimpleUsableWidth}|L{0.46\SimpleUsableWidth}|}
+  {\TableHeaderCell{Field} & \TableHeaderCell{Size} & \TableHeaderCell{Encoding} & \TableHeaderCell{Notes}}
+  Template label & 14 & ASCII plus version byte & \code{OSDP-PIV-AUTO} followed by \ApduChallenge{01}. \\\hline
+  Series Counter & 4 & LSB first & ACU-managed boot or epoch counter, for example \ApduChallenge{07000000}. \\\hline
+  Sequence Counter & 4 & LSB first & ACU-managed per-series counter, for example \ApduChallenge{2A000000}. \\\hline
+  FASC-N & 25 & Raw bytes & Credential FASC-N from CHUID. \\\hline
+  UUID & 16 & Raw bytes & Credential UUID. Successful PIV Auto examples use the credential UUID; unavailable UUID is a failure condition. \\\hline
+  PIV Key Reference & 1 & Raw byte & Challenged key reference, normally \ApduHeader{9A} or \ApduHeader{9E}. \\\hline
+  PIV Algorithm & 1 & Raw byte & Algorithm identifier: \ApduHeader{05}, \ApduHeader{06}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14}. \\\hline
+  Supplemental Entropy & 32 & Raw bytes & Fixed-width ACU entropy field; all zeroes are valid for test vectors only. \\\hline
+\end{SimpleTable}
 
-The challenge is \texttt{KMAC256(SC2-derived-key, template, 32, "OSDP-PIV-AUTO-CHALLENGE-v1")}. The supplemental entropy field is always present and fixed at 32 bytes; all zeroes are valid but not recommended.
-
-\subsection{PIV Signing Request}
-\begin{verbatim}
-30 22                         # Sequence of length 0x22
-06 0B 2B0601040182CC230A0101  # OID: SIA PIV Signing Request
-A0 13                         # Explicit Tag: 0x00
-03 21 00[...]                 # 32-byte KMAC256 PIV Auto challenge
-\end{verbatim}
+The challenge digest is produced in two steps. First, derive
+\code{PIV-AUTO-KDK = KMAC256(key = S-ENC || S-MAC1 || S-MAC2, data = empty, mac\_len = 32, custom = "OSDP-PIV-AUTO-KDK-v1")}.
+Second, derive the challenge as
+\code{KMAC256(key = PIV-AUTO-KDK, data = fixed-width template, mac\_len = L, custom = "OSDP-PIV-AUTO-CHALLENGE-v1")}.
+\code{L} is 32 bytes for SHA-256 profiles and 48 bytes for SHA-384 profiles.
+The supplemental entropy field is always present and fixed at 32 bytes; all
+zeroes are valid for test vectors but not recommended for deployments.
 
 \subsection{Dynamic Authentication Templates}
-\paragraph{RSA-1024}
-\begin{verbatim}
-7C 81 85                      # Dynamic Authentication Template
-82 00                         # Explicit Tag: 0x02 (Request for Response)
-81 81 80                      # 1024-bit (0x80) challenge
-00                            # Begin padding
-01                            # Signature operation, private key operation
-FF ... FF                     # Pad with 0xFF to total length 0x80
-00                            # End sentinel
-30 2F
-30 0B                         # OID: Algorithm (SHA-256)
-06 09 608648016503040201
-04 20 [000102...1E1F]         # Digest (OCTET STRING)
-\end{verbatim}
+\subsubsection{RSA Key Challenge Input}
+\begin{SimpleTable}{RSA Dynamic Authentication Template}{4}
+  {|K{0.16\SimpleUsableWidth}|L{0.16\SimpleUsableWidth}|L{0.26\SimpleUsableWidth}|L{0.42\SimpleUsableWidth}|}
+  {\TableHeaderCell{Tag / Bytes} & \TableHeaderCell{Length} & \TableHeaderCell{Name} & \TableHeaderCell{Value}}
+  \ApduTemplate{7C} & Variable & Dynamic Authentication Template & Outer template for the PIV GENERAL AUTHENTICATE command data. \\\hline
+  \ApduResponse{82} & \ApduResponse{00} & Response request & Empty value requesting the card response in tag \ApduResponse{82}. \\\hline
+  \ApduTemplate{81} & Modulus length & Challenge block & EMSA-PKCS1-v1\_5 encoded digest block with the same length as the RSA modulus. \\\hline
+  \ApduChallenge{0001FF...FF00} & Variable & Padding prefix & EMSA-PKCS1-v1\_5 block prefix before the digest information. \\\hline
+  \ApduChallenge{30...} & Variable & DigestInfo & ASN.1 DigestInfo for SHA-256 or SHA-384 followed by the KMAC-derived digest; SHA-256 uses prefix \ApduChallenge{3031300D060960864801650304020105000420} and SHA-384 uses prefix \ApduChallenge{3041300D060960864801650304020205000430}. \\\hline
+\end{SimpleTable}
 
-\paragraph{RSA-2048}
-\begin{verbatim}
-7C 82 0106                    # Dynamic Authentication Template
-82 00                         # Explicit Tag: 0x02 (Request for Response)
-81 82 0100                    # 2048-bit (0x100) challenge
-00                            # Begin padding
-01                            # Signature operation, private key operation
-FF ... FF                     # Pad with 0xFF to total length 0x100
-00                            # End sentinel
-30 2F
-30 0B                         # OID: Algorithm (SHA-256)
-06 09 608648016503040201
-04 20 [000102...1E1F]         # Digest (OCTET STRING)
-\end{verbatim}
+\begin{SimpleTable}{RSA Dynamic Authentication Examples}{6}
+  {|L{0.16\SimpleUsableWidth}|K{0.11\SimpleUsableWidth}|K{0.11\SimpleUsableWidth}|L{0.18\SimpleUsableWidth}|L{0.20\SimpleUsableWidth}|L{0.24\SimpleUsableWidth}|}
+  {\TableHeaderCell{Profile} & \TableHeaderCell{Alg} & \TableHeaderCell{Key Ref} & \TableHeaderCell{Tag 81} & \TableHeaderCell{Response 82} & \TableHeaderCell{Command APDU}}
+  RSA-1024 & \ApduHeader{06} & \ApduHeader{9A}/\ApduHeader{9E} & 128 bytes & 128 bytes & Informative legacy/non-current test-only APDU. \\\hline
+  RSA-2048 & \ApduHeader{07} & \ApduHeader{9A}/\ApduHeader{9E} & 256 bytes & 256 bytes & 274-byte extended APDU. \\\hline
+  RSA-3072 & \ApduHeader{05} & \ApduHeader{9A}/\ApduHeader{9E} & 384 bytes & 384 bytes & 402-byte extended APDU. \\\hline
+\end{SimpleTable}
 
-\paragraph{EC}
-\begin{verbatim}
-7C 24                         # Dynamic Authentication Template
-82 00                         # Explicit Tag: 0x02 (Request for Response)
-81 20                         # 256-bit (0x20) digest
-[000102...1E1F]
-\end{verbatim}
+\subsubsection{ECC Signature Input}
+\begin{SimpleTable}{ECC Dynamic Authentication Template}{4}
+  {|K{0.16\SimpleUsableWidth}|L{0.16\SimpleUsableWidth}|L{0.26\SimpleUsableWidth}|L{0.42\SimpleUsableWidth}|}
+  {\TableHeaderCell{Tag / Bytes} & \TableHeaderCell{Length} & \TableHeaderCell{Name} & \TableHeaderCell{Value}}
+  \ApduTemplate{7C} & Variable & Dynamic Authentication Template & Outer template for the PIV GENERAL AUTHENTICATE command data. \\\hline
+  \ApduResponse{82} & \ApduResponse{00} & Response request & Empty value requesting the card response in tag \ApduResponse{82}. \\\hline
+  \ApduTemplate{81} & Digest length & Challenge digest & KMAC-derived digest supplied directly to the ECC signing operation. \\\hline
+  Digest bytes & 32 or 48 bytes & Digest value & SHA-256-width digest for P-256; SHA-384-width digest for P-384. \\\hline
+\end{SimpleTable}
+
+\begin{SimpleTable}{ECC Dynamic Authentication Examples}{6}
+  {|L{0.16\SimpleUsableWidth}|K{0.11\SimpleUsableWidth}|K{0.11\SimpleUsableWidth}|L{0.18\SimpleUsableWidth}|L{0.20\SimpleUsableWidth}|L{0.24\SimpleUsableWidth}|}
+  {\TableHeaderCell{Profile} & \TableHeaderCell{Alg} & \TableHeaderCell{Key Ref} & \TableHeaderCell{Tag 81} & \TableHeaderCell{Response 82} & \TableHeaderCell{Command APDU}}
+  ECC P-256 & \ApduHeader{11} & \ApduHeader{9A}/\ApduHeader{9E} & 32 bytes & DER ECDSA signature, about 70-72 bytes & 44-byte short APDU. \\\hline
+  ECC P-384 & \ApduHeader{14} & \ApduHeader{9A}/\ApduHeader{9E} & 48 bytes & DER ECDSA signature, about 102-104 bytes & 60-byte short APDU. \\\hline
+\end{SimpleTable}
+
+\subsubsection{Worked Dynamic Authentication Examples}
+\input{tables/piv-auto-worked-examples}
 
 \subsection{APDUs}
-\paragraph{Select PIV Application}
-\begin{verbatim}
-- 00 A4 04 00  [09] A0 00 00 03 08 00 00 10 00  # Select PIV Application
-< 61 11 4F 06 00 00 10 00 01 00 79 07 4F 05 A0 00 00 03 08 (90 00)
-\end{verbatim}
+\begin{SimpleTable}{PIV Auto APDU Reference: Card Preparation}{4}
+  {|L{0.20\SimpleUsableWidth}|K{0.34\SimpleUsableWidth}|K{0.18\SimpleUsableWidth}|L{0.28\SimpleUsableWidth}|}
+  {\TableHeaderCell{Operation} & \TableHeaderCell{Command APDU} & \TableHeaderCell{Success Response} & \TableHeaderCell{Purpose}}
+  Select PIV Application & \ApduHeader{00A40400}\ApduLength{0B}\ApduTemplate{A000000308000010000100} & \ApduStatus{9000} & Selects the PIV application before reading objects or authenticating. \\\hline
+  Get Discovery Object & \ApduHeader{00CB3FFF}\ApduLength{03}\ApduTemplate{5C017E} & \ApduTemplate{7E...}\ApduStatus{9000} & Reads the Discovery Object so the PD can determine application and PIN/VCI policy. \\\hline
+  Verify PIN (optional) & \ApduHeader{00200080}\ApduLength{08}\ApduChallenge{313233343536FFFF} & \ApduStatus{9000} & Verifies example PIN \code{123456} padded with \ApduChallenge{FF}; failure responses include \ApduStatus{63CX} and \ApduStatus{6983}. \\\hline
+\end{SimpleTable}
 
-\paragraph{Get Data (Discovery Object)}
-\begin{verbatim}
-- 00 CB 3F FF  [00 00 03]  5C 01 7E              # Get Data, tag 5C, object 0x7E
-< 7E 12 [ 4F 0B [A0 00 00 03 08 00 00 10 00 01 00] [ 5F 2F 02 [40 00] ] ] (90 00)
-\end{verbatim}
+\begin{SimpleTable}{PIV Auto APDU Reference: GENERAL AUTHENTICATE Command}{4}
+  {|L{0.18\SimpleUsableWidth}|K{0.28\SimpleUsableWidth}|L{0.18\SimpleUsableWidth}|L{0.36\SimpleUsableWidth}|}
+  {\TableHeaderCell{Field} & \TableHeaderCell{Encoding} & \TableHeaderCell{Source} & \TableHeaderCell{Notes}}
+  CLA & \ApduHeader{00} & ISO/IEC 7816-4 & Use \ApduHeader{0C} when a credential secure channel is active. \\\hline
+  INS & \ApduHeader{87} & ISO/IEC 7816-4 & GENERAL AUTHENTICATE instruction. \\\hline
+  P1 & Algorithm ID & PIV profile & \ApduHeader{05}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14} for supported PIV Auto profiles; \ApduHeader{06} appears only in informative RSA-1024 legacy examples. \\\hline
+  P2 & Key Reference & PIV profile & \ApduHeader{9A} or \ApduHeader{9E} for PIV Auto. \\\hline
+  Lc & Short or extended & Command length & Short APDUs use one length byte; extended APDUs use \ApduLength{00} followed by two length bytes. \\\hline
+  Command data & \ApduTemplate{7C...}\ApduResponse{8200}\ApduTemplate{81...}\ApduChallenge{...} & Dynamic Authentication Template & Tag \ApduResponse{82} is empty to request a response; tag \ApduTemplate{81} carries the exact challenge input. \\\hline
+  Le & \ApduLength{00} & Response request & Requests the maximum response supported by the card interface. \\\hline
+\end{SimpleTable}
 
-\paragraph{Verify PIN (contact-only)}
-\begin{verbatim}
-- 00 20 00 [00/80]  08  30 30 30 30 30 30 FF FF  # PIN padded to 8 octets with 0xFF
-< (90 00)                                        # 0x63CX = fail (X retries left), 0x6983 = PIN blocked
-\end{verbatim}
+\begin{SimpleTable}{PIV Auto APDU Reference: GENERAL AUTHENTICATE Response}{4}
+  {|L{0.20\SimpleUsableWidth}|K{0.30\SimpleUsableWidth}|L{0.22\SimpleUsableWidth}|L{0.28\SimpleUsableWidth}|}
+  {\TableHeaderCell{Case} & \TableHeaderCell{Response APDU} & \TableHeaderCell{PD Handling} & \TableHeaderCell{OSDP Payload}}
+  Complete response & \ApduTemplate{7C...}\ApduResponse{82...}\ApduStatus{9000} & Strip only the ISO status word. & Carry the complete \ApduTemplate{7C} Dynamic Authentication Template in \texttt{osdp\_CRAUTHR} or \texttt{osdp\_PIVSTATUSR}. \\\hline
+  Additional response bytes & \ApduStatus{61XX} & Issue GET RESPONSE with Le \ApduLength{XX}. & Concatenate returned data before reporting the final \ApduTemplate{7C} template. \\\hline
+  GET RESPONSE command & \ApduHeader{00C00000}\ApduLength{XX} & Retrieve remaining card response bytes. & Not exposed directly to the ACU. \\\hline
+  Credential error & \ApduStatus{69..} or \ApduStatus{6A..} & Preserve command failure detail. & Report via \texttt{osdp\_PDERROR} when available; do not treat as a valid signed response. \\\hline
+\end{SimpleTable}
 
-\paragraph{Sign (RSA-1024)}
-\begin{verbatim}
-- 00 87 [06] [9A/9E] 88 [DAT]  # 0x06 = RSA-1024; 0x9A = PIV Auth; 0x9E = Card Auth
-< 7C 81 83 82 81 81 [signature x 0x10] (90 00)
-\end{verbatim}
-
-\paragraph{Sign (RSA-2048)}
-\begin{verbatim}
-- 10 87 [07] [9A/9E] D9 [DAT header and padding]   # 0x07 = RSA-2048
-- 00 87 [07] [9A/9E] 31 [DAT encoded digest]
-< 7C 82 01 04 82 82 01 00 [signature x 0xF8] (90 00) # First 0xF8 octets
-- 00 C0 00 00
-< [signature x 0x08] (90 00)                        # Remaining 0x08 octets
-\end{verbatim}
-
-\paragraph{Sign (EC)}
-\begin{verbatim}
-- 00 87 [06] [11/14] 26 [DAT]  # 0x11 = EC-P256; 0x14 = EC-P384; 0x9A = PIV Auth; 0x9E = Card Auth
-< 7C [LEN] 82 [LEN] [signature, up to length 0x48] (90 00)
-\end{verbatim}
-\endgroup
+\begin{SimpleTable}{PIV Auto APDU Reference: OPACITY / VCI Context}{4}
+  {|L{0.20\SimpleUsableWidth}|K{0.31\SimpleUsableWidth}|K{0.14\SimpleUsableWidth}|L{0.35\SimpleUsableWidth}|}
+  {\TableHeaderCell{Operation} & \TableHeaderCell{Command Shape} & \TableHeaderCell{Key Ref} & \TableHeaderCell{Relationship to PIV Auto}}
+  OPACITY establish & \ApduHeader{0087[27/2E]04}\ApduLength{[Lc]}\ApduTemplate{7C...81...}\ApduResponse{8200} & \ApduHeader{04} & Establishes VCI secure messaging and returns cryptogram/CVC evidence. \\\hline
+  PIV Auto challenge & \ApduHeader{0087[alg][9A/9E]}\ApduLength{[Lc]}\ApduTemplate{7C...}\ApduResponse{8200}\ApduTemplate{81...}\ApduChallenge{...}\ApduLength{00} & \ApduHeader{9A}/\ApduHeader{9E} & Performs the autonomous key challenge after card preparation and any required VCI setup. \\\hline
+  Response handling & \ApduTemplate{7C...}\ApduResponse{82...}\ApduStatus{9000} & \ApduHeader{9A}/\ApduHeader{9E} & The PD reports the returned signed response bytes exactly, excluding only SW1/SW2. \\\hline
+\end{SimpleTable}

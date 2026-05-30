@@ -1,5 +1,5 @@
 \begin{PacketTable}{PIV Biometric Match Reply (osdp\_PIVBIOMATCHR)}
   \PacketRow{1}{CMND}{Reply identifier.}{0x87 (tentative)}
-  \PacketRow{1}{Result}{Outcome of the biometric match. See Table~\ref{tab:pivbiomatch-results}.}{0x00--0xFF}
-  \PacketRow{0 or 32}{Hash}{32-byte SHA-256 hash of the biometric template tag \texttt{0xBC} data field. The PD \textbf{SHALL} include this field only when \emph{Result} is \texttt{0x00} (off-card match success). The PD \textbf{SHALL} omit this field for on-card match success (\texttt{0x09}) and all failure result codes.}{0x00--0xFF}
+  \PacketRow{1}{Result}{Outcome of the biometric match. See Table~\ref{tab:pivbiomatch-results}.}{0x00-0xFF}
+  \PacketRow{0 or 32}{Hash}{32-byte SHA-256 hash of the biometric template tag \code{0xBC} data field. The PD \textbf{SHALL} include this field only when \emph{Result} is \code{0x00} (off-card match success). The PD \textbf{SHALL} omit this field for on-card match success (\code{0x09}) and all failure result codes.}{0x00-0xFF}
 \end{PacketTable}

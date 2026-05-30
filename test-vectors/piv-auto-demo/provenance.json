@@ -1,7 +1,18 @@
 {
-  "warning": "Reusable demonstration keys copied from gsa-icam-card-builder. Do not use as production trust material.",
+  "warning": "Reusable demonstration keys are committed repository test fixtures originally imported from GSA FICAM card-builder. Do not use as production trust material.",
   "pkcs12_password": "",
-  "source_root": "~/Projects/gsa-icam-card-builder",
+  "key_certificate_source": "Committed repository demonstration keys originally imported from GSA FICAM card-builder; generated YubiKey material covers live-capture profiles not present in that source set.",
+  "cvc_vector_source": {
+    "source": "NIST test-card VCI capture artifacts",
+    "imported_fixture": "test-vectors/vci-trust-anchors/card-16-intermediate",
+    "generated_outputs": [
+      "generated/loaded-intermediate-ca-trust-anchor.bin",
+      "generated/intermediate-cvc-7f21.bin",
+      "generated/secure-card-cvc-7f21.bin",
+      "generated/smcs-5fc122.bin",
+      "generated/content-signing-certificate.der"
+    ]
+  },
   "files": [
     {
       "role": "root_ca",

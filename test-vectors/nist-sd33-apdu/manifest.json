@@ -1,0 +1,30 @@
+{
+  "source": {
+    "name": "NIST Special Database 33 / NIST IR 8347 PIV test-card APDU captures",
+    "import_note": "Imported from a local sibling checkout; this path is intentionally not required by the document.",
+    "public_reference": "https://nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8347.pdf"
+  },
+  "imported_files": [
+    {
+      "path": "test-vectors/nist-sd33-apdu/nist_special_database_33_card_16.json",
+      "source_sha256": "cfe61d9ef43da635518d2c2c1d420804a92ff9342682afc849f09aeded6af8b3"
+    },
+    {
+      "path": "test-vectors/nist-sd33-apdu/nist_special_database_33_card_2.json",
+      "source_sha256": "a39869482518e8b38d26f662095d17867bc3d95257485638f45de3c500526e83"
+    },
+    {
+      "path": "test-vectors/nist-sd33-apdu/nist_special_database_33_card_3.json",
+      "source_sha256": "0f8673690dab21507afef15da31cfdb5c8e9bbe8f9f4e40c4118afa2f3b53960"
+    },
+    {
+      "path": "test-vectors/nist-sd33-apdu/nist_special_database_33_card_4.json",
+      "source_sha256": "4ae5caea7258c9739a326d1672778cc7a5cd609bbcae62ee54aa545a75d9923b"
+    },
+    {
+      "path": "test-vectors/nist-sd33-apdu/nist_special_database_33_card_5.json",
+      "source_sha256": "98eb96b46c9891513288f3905bb01a4431414e2a251a91ce07d1b184e80205d7"
+    }
+  ],
+  "notes": "Fixtures are byte-complete public test-card APDU transcripts for NIST test cards with VCI support. They may include PINs, pairing codes, ephemeral private keys, shared secrets, and derived session keys; do not use them as operational secret material."
+}

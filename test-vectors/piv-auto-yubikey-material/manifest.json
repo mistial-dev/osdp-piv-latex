@@ -1,0 +1,87 @@
+{
+  "source": "Generated reusable YubiKey PIV test material for OSDP PIV Auto coverage.",
+  "warning": "These private keys are committed test fixtures. Do not use them for production credentials.",
+  "loader": "scripts/load_ykman_piv_profiles.py",
+  "profiles": [
+    {
+      "profile": "9a-rsa1024",
+      "slot": "9A",
+      "algorithm_id": "0x06",
+      "key_type": "rsa1024",
+      "pin_policy": "ONCE",
+      "touch_policy": "NEVER",
+      "private_key": "9a-rsa1024/private-key.pem",
+      "certificate": "9a-rsa1024/certificate.pem"
+    },
+    {
+      "profile": "9e-rsa1024",
+      "slot": "9E",
+      "algorithm_id": "0x06",
+      "key_type": "rsa1024",
+      "pin_policy": "NEVER",
+      "touch_policy": "NEVER",
+      "private_key": "9e-rsa1024/private-key.pem",
+      "certificate": "9e-rsa1024/certificate.pem"
+    },
+    {
+      "profile": "9a-rsa3072",
+      "slot": "9A",
+      "algorithm_id": "0x05",
+      "key_type": "rsa3072",
+      "pin_policy": "ONCE",
+      "touch_policy": "NEVER",
+      "private_key": "9a-rsa3072/private-key.pem",
+      "certificate": "9a-rsa3072/certificate.pem"
+    },
+    {
+      "profile": "9e-rsa3072",
+      "slot": "9E",
+      "algorithm_id": "0x05",
+      "key_type": "rsa3072",
+      "pin_policy": "NEVER",
+      "touch_policy": "NEVER",
+      "private_key": "9e-rsa3072/private-key.pem",
+      "certificate": "9e-rsa3072/certificate.pem"
+    },
+    {
+      "profile": "9a-ecp384",
+      "slot": "9A",
+      "algorithm_id": "0x14",
+      "key_type": "ecp384",
+      "pin_policy": "ONCE",
+      "touch_policy": "NEVER",
+      "private_key": "9a-ecp384/private-key.pem",
+      "certificate": "9a-ecp384/certificate.pem"
+    },
+    {
+      "profile": "9e-ecp384",
+      "slot": "9E",
+      "algorithm_id": "0x14",
+      "key_type": "ecp384",
+      "pin_policy": "NEVER",
+      "touch_policy": "NEVER",
+      "private_key": "9e-ecp384/private-key.pem",
+      "certificate": "9e-ecp384/certificate.pem"
+    },
+    {
+      "profile": "9c-ecp384",
+      "slot": "9C",
+      "algorithm_id": "0x14",
+      "key_type": "ecp384",
+      "pin_policy": "ALWAYS",
+      "touch_policy": "NEVER",
+      "private_key": "9c-ecp384/private-key.pem",
+      "certificate": "9c-ecp384/certificate.pem"
+    },
+    {
+      "profile": "9d-ecp384",
+      "slot": "9D",
+      "algorithm_id": "0x14",
+      "key_type": "ecp384",
+      "pin_policy": "ONCE",
+      "touch_policy": "NEVER",
+      "private_key": "9d-ecp384/private-key.pem",
+      "certificate": "9d-ecp384/certificate.pem"
+    }
+  ]
+}

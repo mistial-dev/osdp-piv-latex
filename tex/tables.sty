@@ -1,48 +1,167 @@
-\ProvidesPackage{tables}[2025/10/30 OSDP table helpers]
+\ProvidesPackage{tex/tables}[2025/10/30 OSDP table helpers]
 
 \RequirePackage{array}
 \RequirePackage{tabularx}
+\RequirePackage{longtable}
 \RequirePackage{xcolor}
 \RequirePackage{colortbl}
 \RequirePackage{caption}
 
-\captionsetup[table]{font={bf,Large},labelfont={bf,Large},skip=1.2em}
+\captionsetup[table]{font={bf,normalsize},labelfont={bf,normalsize},skip=0.25em,justification=raggedright,singlelinecheck=false,hypcap=false}
 
 \definecolor{PacketHeaderBg}{HTML}{101010}
 \definecolor{PacketHeaderFg}{HTML}{FFFFFF}
+\definecolor{ApduHeaderColor}{HTML}{005A9C}
+\definecolor{ApduLengthColor}{HTML}{6A3D9A}
+\definecolor{ApduTemplateColor}{HTML}{8A5A00}
+\definecolor{ApduChallengeColor}{HTML}{007A3D}
+\definecolor{ApduResponseColor}{HTML}{B23A48}
+\definecolor{ApduStatusColor}{HTML}{444444}
 
-\newlength{\PacketSizeCol}\setlength{\PacketSizeCol}{0.16\linewidth}
-\newlength{\PacketNameCol}\setlength{\PacketNameCol}{0.26\linewidth}
-\newlength{\PacketMeaningCol}\setlength{\PacketMeaningCol}{0.38\linewidth}
-\newlength{\PacketValueCol}\setlength{\PacketValueCol}{0.20\linewidth}
+% Public helper for every table header cell. Do not hand-style headers in tables.
+\newcommand{\TableHeaderCell}[1]{\centering\arraybackslash\textcolor{PacketHeaderFg}{\bfseries #1}}
+\newcommand{\TableCaptionBlock}[1]{\noindent\captionof{table}{#1}\vspace{0.2em}}
+\newcommand{\TableContinuedHeader}[2]{%
+  \multicolumn{#1}{|>{\raggedright\arraybackslash}p{\dimexpr\linewidth-2\tabcolsep-2\arrayrulewidth\relax}|}{\bfseries Table \thetable: #2 (continued)} \\\hline}
+\newcommand{\TableNote}[1]{%
+  \begin{flushleft}
+  \footnotesize #1
+  \end{flushleft}}
+\makeatletter
+\newcommand{\HexBytes}[1]{%
+  \begingroup
+    \@tfor\HexByteToken:=#1\do{\HexByteToken\allowbreak}%
+  \endgroup}
+\makeatother
+\newcommand{\HexPart}[2]{\textcolor{#1}{\HexBytes{#2}}}
+\newcommand{\ApduHeader}[1]{\HexPart{ApduHeaderColor}{#1}}
+\newcommand{\ApduLength}[1]{\HexPart{ApduLengthColor}{#1}}
+\newcommand{\ApduTemplate}[1]{\HexPart{ApduTemplateColor}{#1}}
+\newcommand{\ApduChallenge}[1]{\HexPart{ApduChallengeColor}{#1}}
+\newcommand{\ApduResponse}[1]{\HexPart{ApduResponseColor}{#1}}
+\newcommand{\ApduStatus}[1]{\HexPart{ApduStatusColor}{#1}}
 
-\newcolumntype{S}{>{\centering\arraybackslash}m{\PacketSizeCol}}
+% Internal column widths for the supported table helpers.
+\newlength{\PacketSizeCol}\setlength{\PacketSizeCol}{0.09\linewidth}
+\newlength{\PacketNameCol}\setlength{\PacketNameCol}{0.25\linewidth}
+\newlength{\PacketMeaningCol}\setlength{\PacketMeaningCol}{0.42\linewidth}
+\newlength{\PacketValueCol}\setlength{\PacketValueCol}{0.24\linewidth}
+\newlength{\PacketUsableWidth}
+\newlength{\ValueCol}\setlength{\ValueCol}{0.13\linewidth}
+\newlength{\DescriptionCol}\setlength{\DescriptionCol}{0.87\linewidth}
+\newlength{\SimpleUsableWidth}
+
+\newcolumntype{S}{>{\raggedright\arraybackslash}m{\PacketSizeCol}}
 \newcolumntype{N}{>{\raggedright\arraybackslash}m{\PacketNameCol}}
 \newcolumntype{M}{>{\raggedright\arraybackslash}m{\PacketMeaningCol}}
-\newcolumntype{V}{>{\raggedright\arraybackslash}m{\PacketValueCol}}
+\newcolumntype{V}{>{\footnotesize\ttfamily\raggedright\arraybackslash}m{\PacketValueCol}}
+\newcolumntype{C}{>{\footnotesize\ttfamily\raggedright\arraybackslash}m{\ValueCol}}
+\newcolumntype{D}{>{\raggedright\arraybackslash}m{\DescriptionCol}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
+\newcolumntype{K}[1]{>{\footnotesize\ttfamily\raggedright\arraybackslash}m{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
+% PacketTable is for OSDP command/reply layouts: Size, Name, Meaning, Value.
 \newenvironment{PacketTable}[1]{%
-  \setlength{\tabcolsep}{6pt}%
-  \renewcommand{\arraystretch}{1.35}%
-  \Needspace{12\baselineskip}%
-  \begin{samepage}%
-  \begin{center}
-    \captionsetup{type=table}%
-    \captionof{table}{#1}
-    \begin{tabular}{|S|N|M|V|}
+  \par\Needspace*{14\baselineskip}%
+  \begingroup
+    \setlength{\tabcolsep}{6pt}%
+    \renewcommand{\arraystretch}{1.35}%
+    \setlength{\LTleft}{0pt}%
+    \setlength{\LTright}{0pt}%
+    \setlength{\LTcapwidth}{\linewidth}%
+    \setlength{\LTpre}{0pt}%
+    \setlength{\LTpost}{0.5em}%
+    \setlength{\PacketUsableWidth}{\dimexpr\linewidth-8\tabcolsep-5\arrayrulewidth\relax}%
+    \setlength{\PacketSizeCol}{0.09\PacketUsableWidth}%
+    \setlength{\PacketNameCol}{0.25\PacketUsableWidth}%
+    \setlength{\PacketMeaningCol}{0.42\PacketUsableWidth}%
+    \setlength{\PacketValueCol}{0.24\PacketUsableWidth}%
+    \TableCaptionBlock{#1}%
+    \addtocounter{table}{-1}%
+    \begin{longtable}{|S|N|M|V|}
       \hline
       \rowcolor{PacketHeaderBg}
-      \textcolor{PacketHeaderFg}{\bfseries Size (bytes)} &
-      \textcolor{PacketHeaderFg}{\bfseries Name} &
-      \textcolor{PacketHeaderFg}{\bfseries Meaning} &
-      \textcolor{PacketHeaderFg}{\bfseries Value} \\\hline
+      \TableHeaderCell{Size} &
+      \TableHeaderCell{Name} &
+      \TableHeaderCell{Meaning} &
+      \TableHeaderCell{Value} \\\hline
+\endfirsthead
+      \hline
+      \rowcolor{PacketHeaderBg}
+      \TableHeaderCell{Size} &
+      \TableHeaderCell{Name} &
+      \TableHeaderCell{Meaning} &
+      \TableHeaderCell{Value} \\\hline
+\endhead
 }{%
-    \end{tabular}
-  \end{center}
-  \end{samepage}
+    \end{longtable}
+  \endgroup
 }
 
 \newcommand{\PacketRow}[4]{
   #1 & #2 & #3 & #4 \\\hline}
+
+% ValueDescriptionTable is for result codes, flags, modes, masks, and type lists.
+\newenvironment{ValueDescriptionTable}[3][12\baselineskip]{%
+  \par\Needspace*{#1}%
+  \begingroup
+    \setlength{\tabcolsep}{6pt}%
+    \renewcommand{\arraystretch}{1.35}%
+    \setlength{\LTleft}{0pt}%
+    \setlength{\LTright}{0pt}%
+    \setlength{\LTcapwidth}{\linewidth}%
+    \setlength{\LTpre}{0pt}%
+    \setlength{\LTpost}{0.5em}%
+    \setlength{\SimpleUsableWidth}{\dimexpr\linewidth-4\tabcolsep-3\arrayrulewidth\relax}%
+    \setlength{\ValueCol}{0.13\SimpleUsableWidth}%
+    \setlength{\DescriptionCol}{0.87\SimpleUsableWidth}%
+    \TableCaptionBlock{#2}%
+    \addtocounter{table}{-1}%
+    \begin{longtable}{|C|D|}
+      \hline
+      \rowcolor{PacketHeaderBg}
+      \TableHeaderCell{#3} & \TableHeaderCell{Description} \\\hline
+\endfirsthead
+      \hline
+      \rowcolor{PacketHeaderBg}
+      \TableHeaderCell{#3} & \TableHeaderCell{Description} \\\hline
+\endhead
+}{%
+    \end{longtable}
+  \endgroup
+}
+
+\newcommand{\ValueDescriptionRow}[2]{%
+  #1 & #2 \\\hline}
+
+% SimpleTable is for uncommon full-width tables that need custom columns.
+% Arguments: title, column count, longtable column spec, header row.
+\newenvironment{SimpleTable}[4]{%
+  \par\Needspace*{12\baselineskip}%
+  \begingroup
+    \setlength{\tabcolsep}{6pt}%
+    \renewcommand{\arraystretch}{1.35}%
+    \setlength{\LTleft}{0pt}%
+    \setlength{\LTright}{0pt}%
+    \setlength{\LTcapwidth}{\linewidth}%
+    \setlength{\LTpre}{0pt}%
+    \setlength{\LTpost}{0.5em}%
+    \setlength{\SimpleUsableWidth}{\dimexpr\linewidth-\numexpr2*#2\relax\tabcolsep-\numexpr#2+1\relax\arrayrulewidth\relax}%
+    \TableCaptionBlock{#1}%
+    \addtocounter{table}{-1}%
+    \begin{longtable}{#3}
+      \hline
+      \rowcolor{PacketHeaderBg}
+      #4 \\\hline
+\endfirsthead
+      \hline
+      \rowcolor{PacketHeaderBg}
+      #4 \\\hline
+\endhead
+}{%
+    \end{longtable}
+  \endgroup
+}
 
 \endinput

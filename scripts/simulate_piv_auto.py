@@ -833,7 +833,7 @@ def main() -> int:
     parser.add_argument(
         "--all-profiles",
         action="store_true",
-        help="Exercise supported PIV Auto profiles plus informative legacy test-only profiles",
+        help="Exercise supported PIV Auto profiles plus informative legacy RSA-1024 test-only profiles",
     )
     parser.add_argument(
         "--supplemental-entropy",

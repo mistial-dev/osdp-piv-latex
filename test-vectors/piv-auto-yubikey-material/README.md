@@ -6,7 +6,7 @@ fixtures and must not be used for production credentials.
 
 Included profiles:
 
-- `9a-rsa1024`, `9e-rsa1024`: legacy RSA-1024 coverage.
+- `9a-rsa1024`, `9e-rsa1024`: legacy RSA-1024 test coverage.
 - `9a-rsa3072`, `9e-rsa3072`: RSA-3072 coverage.
 - `9a-ecp384`, `9e-ecp384`: ECC P-384 PIV Auto coverage.
 - `9c-ecp384`, `9d-ecp384`: supporting P-384 APDU examples.

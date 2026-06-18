@@ -1,0 +1,6 @@
+\begin{PacketTable}{PIV Application Select (osdp\_PIVSELECT)}
+  \PacketRow{1}{CMND}{Command identifier.}{0xA7 (tentative)}
+  \PacketRow{1}{Selection Flags}{Selection controls. All bits are reserved for future use and \textbf{SHALL} be transmitted as zero.}{0x00}
+  \PacketRow{1}{AID Length}{Length of the Application Identifier.}{0x05-0x10}
+  \PacketRow{5-16}{AID}{Application Identifier to select by ISO/IEC~7816 DF name.}{0x00-0xFF}
+\end{PacketTable}

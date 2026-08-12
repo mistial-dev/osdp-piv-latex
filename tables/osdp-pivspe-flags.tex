@@ -1,7 +1,6 @@
 \begin{ValueDescriptionTable}{SPE Flag Values}{Mask}
   \label{tab:pivspe-flags}
-  \ValueDescriptionRow{0x02}{Require an explicit cache-clear command; do not auto-clear cached PINs on credential removal.}
-  \ValueDescriptionRow{0x04}{Skip pairing-code verification when the credential and policy permit VCI without a pairing code.}
-  \ValueDescriptionRow{0x08}{Auto-execute VCI verification when the credential is presented after a successful pre-cache (Mode \code{0x02}).}
-  \ValueDescriptionRow{0x01, 0x10-0x80}{Reserved and \textbf{SHALL} be transmitted as zero.}
+  \ValueDescriptionRow{0x02}{Retain a cached PIN across credential removal until its validity expires or another clearing event occurs. Valid only with Mode \code{0x04}.}
+  \ValueDescriptionRow{0x08}{Auto Execute When Credential Is Presented. Valid only with verification Modes \code{0x01}-\code{0x03}.}
+  \ValueDescriptionRow{0x01, 0x04, 0x10-0x80}{Reserved and \textbf{SHALL} be transmitted as zero.}
 \end{ValueDescriptionTable}

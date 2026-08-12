@@ -1,4 +1,4 @@
-\begin{PacketTable}{TWIC Privacy Key Load (osdp\_PIV\_LOADTPK)}
+\begin{PacketTable}{TWIC Privacy Key Load (osdp\_PIVLOADTPK)}
   \PacketRow{1}{CMND}{Command identifier.}{0xAC (tentative)}
   \PacketRow{1}{Cache Timeout}{Number of seconds to retain the cached TPK. \code{0x00} clears any cached key immediately; \code{0x01}-\code{0xFF} permit caching for up to 255 seconds.}{0x00-0xFF}
   \PacketRow{1}{Control Flags}{Bit~0 set requests automatic clearing when the credential is removed; all other bits \textbf{SHALL} be zero.}{0x00-0xFF}

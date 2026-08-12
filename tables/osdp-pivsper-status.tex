@@ -1,0 +1,9 @@
+\begin{ValueDescriptionTable}{PIVSPE Status Result (Mode \code{0x00})}{Value}
+  \label{tab:pivsper-status}
+  \ValueDescriptionRow{0x00}{No cached PIN is present and the current credential is not PIN verified.}
+  \ValueDescriptionRow{0x01}{A cached PIN is present.}
+  \ValueDescriptionRow{0x02}{The current credential and selected application are PIN verified.}
+  \ValueDescriptionRow{0x03}{A cached PIN is present and the current credential and selected application are PIN verified.}
+  \ValueDescriptionRow{0x04-0x7F}{Reserved for future use.}
+  \ValueDescriptionRow{0x80-0xFF}{Private use.}
+\end{ValueDescriptionTable}

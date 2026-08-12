@@ -17,6 +17,27 @@ This folder builds the OSDP PIV proposal PDF. Most edits should be made in `sect
 4. Run `make`.
 5. Check the generated `osdp-piv-proposal.pdf`.
 
+## Review Redline
+
+Generate a track-changes-style PDF against an explicit Git revision:
+
+```sh
+make redline BASE=<git-ref>
+```
+
+The command compares the chosen committed baseline with the current working
+tree, including uncommitted and untracked LaTeX inputs. It expands all
+`\input` and `\include` files before applying `latexdiff`, then writes
+`build/redline/osdp-piv-proposal-redline.pdf`. The first page identifies the
+baseline commit and current working-tree commit.
+
+The redline requires the TeX Live `latexdiff` and `latexpand` packages. If
+they are missing, install them with:
+
+```sh
+tlmgr install latexdiff latexpand
+```
+
 ## Tables
 
 All tables should use the helpers in `tex/tables.sty`. They are full-width and breakable. The table title is part of the table header, so it stays with the top of the table. If a table continues onto another page, the helper emits a continued header automatically.

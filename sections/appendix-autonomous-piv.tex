@@ -112,7 +112,7 @@ zeroes are valid for test vectors but not recommended for deployments.
 \begin{SimpleTable}{PIV Auto APDU Reference: GENERAL AUTHENTICATE Response}{4}
   {|L{0.20\SimpleUsableWidth}|K{0.30\SimpleUsableWidth}|L{0.22\SimpleUsableWidth}|L{0.28\SimpleUsableWidth}|}
   {\TableHeaderCell{Case} & \TableHeaderCell{Response APDU} & \TableHeaderCell{PD Handling} & \TableHeaderCell{OSDP Payload}}
-  Complete response & \ApduTemplate{7C...}\ApduResponse{82...}\ApduStatus{9000} & Strip only the ISO status word. & Carry the complete \ApduTemplate{7C} Dynamic Authentication Template in \texttt{osdp\_CRAUTHR} or \texttt{osdp\_PIVSTATUSR}. \\\hline
+  Complete response & \ApduTemplate{7C...}\ApduResponse{82...}\ApduStatus{9000} & Strip only the ISO status word. & Carry the complete \ApduTemplate{7C} Dynamic Authentication Template in \texttt{osdp\_CRAUTHR} or \texttt{osdp\_PIVSTATUS}. \\\hline
   Additional response bytes & \ApduStatus{61XX} & Issue GET RESPONSE with Le \ApduLength{XX}. & Concatenate returned data before reporting the final \ApduTemplate{7C} template. \\\hline
   GET RESPONSE command & \ApduHeader{00C00000}\ApduLength{XX} & Retrieve remaining card response bytes. & Not exposed directly to the ACU. \\\hline
   Credential error & \ApduStatus{69..} or \ApduStatus{6A..} & Preserve command failure detail. & Report via \texttt{osdp\_PDERROR} when available; do not treat as a valid signed response. \\\hline

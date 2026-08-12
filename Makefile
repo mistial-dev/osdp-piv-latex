@@ -19,6 +19,10 @@ live-piv-auto:
 
 pdf: $(PDF)
 
+redline:
+	@if [ -z "$(BASE)" ]; then echo "Usage: make redline BASE=<git-ref>" >&2; exit 2; fi
+	bash scripts/build_redline.sh "$(BASE)"
+
 $(PDF): $(TEX_SOURCES) Makefile | $(BUILD_DIR)/sections
 	$(LATEX) $(LATEX_OPTS) -outdir=$(BUILD_DIR) main.tex
 	cp $(BUILD_DIR)/main.pdf $(PDF)
@@ -30,4 +34,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(PDF)
 
-.PHONY: all test live-piv-auto pdf clean
+.PHONY: all test live-piv-auto pdf redline clean

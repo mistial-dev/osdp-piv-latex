@@ -1,6 +1,6 @@
 \begin{ValueDescriptionTable}{PIV Mode Flags}{Mask}
   \label{tab:pivmode-flags}
-  \ValueDescriptionRow{0x01}{Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, derives a KMAC256 challenge from the configured counters and entropy, and reports the signed response using \code{osdp_PIVSTATUSR}.}
+  \ValueDescriptionRow{0x01}{Enable autonomous PIV (PIV Auto). The PD interrogates credentials, establishes VCI when possible, derives a KMAC256 challenge from the configured counters and entropy, and reports the signed response using \code{osdp_PIVSTATUS}.}
   \ValueDescriptionRow{0x02}{Permit VCI usage when available.}
   \ValueDescriptionRow{0x04}{Enforce FICAM strict mode (PIV applications only).}
 \end{ValueDescriptionTable}

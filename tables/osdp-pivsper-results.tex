@@ -1,6 +1,6 @@
 \begin{ValueDescriptionTable}{PIVSPE Result Codes}{Value}
   \label{tab:pivsper-results}
-  \ValueDescriptionRow{0x00}{Success – PIN verified.}
+  \ValueDescriptionRow{0x00}{Requested operation completed.}
   \ValueDescriptionRow{0x01}{Timeout – PIN entry did not begin within the allotted time.}
   \ValueDescriptionRow{0x02}{Timeout – inter-digit interval exceeded.}
   \ValueDescriptionRow{0x03}{PIN mismatch.}
@@ -10,5 +10,7 @@
   \ValueDescriptionRow{0x07}{Incorrect parameters.}
   \ValueDescriptionRow{0x08}{Security condition not met.}
   \ValueDescriptionRow{0x09}{VCI not established for the requested mode.}
-  \ValueDescriptionRow{0x0A-0xFF}{Reserved for future use.}
+  \ValueDescriptionRow{0x0A}{No cached PIN is available.}
+  \ValueDescriptionRow{0x0B-0x7F}{Reserved for future use.}
+  \ValueDescriptionRow{0x80-0xFF}{Private use.}
 \end{ValueDescriptionTable}

@@ -1,11 +1,12 @@
 \begin{ValueDescriptionTable}{SPE Mode Values}{Value}
   \label{tab:pivspe-modes}
-  \ValueDescriptionRow{0x00}{Status only – report current SPE state without initiating entry.}
-  \ValueDescriptionRow{0x01}{Normal – single PIN verification with the credential present (contact).}
-  \ValueDescriptionRow{0x02}{VCI pre-cache – collect a PIN prior to credential presentation for VCI use.}
-  \ValueDescriptionRow{0x03}{VCI execute – perform PIN verification over VCI using a cached PIN.}
-  \ValueDescriptionRow{0x04}{PIN caching – cache PIN for subsequent operations (non-FICAM use cases).}
-  \ValueDescriptionRow{0x05}{Clear/abort – clear any cached PIN and abort the current operation.}
-  \ValueDescriptionRow{0x06-0x7F}{Reserved for future use (set to zero).}
+  \ValueDescriptionRow{0x00}{Report the persistent SPE status without initiating PIN entry.}
+  \ValueDescriptionRow{0x01}{Acquire a PIN and verify it with the credential currently present.}
+  \ValueDescriptionRow{0x02}{Execute VCI PIN verification using a cached PIN.}
+  \ValueDescriptionRow{0x03}{Execute normal PIN verification using a cached PIN.}
+  \ValueDescriptionRow{0x04}{Acquire and cache a PIN.}
+  \ValueDescriptionRow{0x05}{Abort active PIN entry and clear the cached PIN.}
+  \ValueDescriptionRow{0x06}{Report attempts remaining without initiating PIN verification.}
+  \ValueDescriptionRow{0x07-0x7F}{Reserved for future use.}
   \ValueDescriptionRow{0x80-0xFF}{Private use.}
 \end{ValueDescriptionTable}

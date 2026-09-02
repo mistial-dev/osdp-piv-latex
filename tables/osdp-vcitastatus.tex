@@ -1,8 +1,8 @@
 \begin{PacketTable}{VCI Trust Anchor Status Reply (osdp\_PIVVCITASTATUSR)}
   \PacketRow{1}{CMND}{Reply identifier.}{0x88 (tentative)}
-  \PacketRow{2}{TOTAL}{Length of the complete status payload, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{OFFSET}{Offset of this fragment within the status payload, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{DATA\_LEN}{Length of the data block in this fragment, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpSizeTotal}{Length of the complete status payload, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpOffset}{Offset of this fragment within the status payload, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpFragmentSize}{Length of the data block in this fragment, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{1}{Total Anchor Count}{Number of cached trust anchors.}{0x00-0xFF}
   \PacketRow{2}{Available Bytes}{Remaining storage capacity for additional variable-length trust anchor records, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{0-n}{Anchor Records}{Zero or more 12-byte inventory records. Each record contains: \code{Trust Anchor ID} (1 byte for load/delete management), anchor selector \code{IIN} (8 bytes from the stored trust anchor record, not necessarily the secure CVC IIN), \code{Anchor Length} (2 bytes LSB first, maximum \code{0x0240}), and \code{Attributes} (1 byte, reserved). Records that span fragments continue in subsequent replies.}{-}

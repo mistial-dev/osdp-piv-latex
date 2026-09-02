@@ -23,15 +23,18 @@
 \else
   \RequirePackage{fontspec}
   \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
-  \setmainfont{calibri.ttf}[
+  \setmainfont{Carlito-Regular.ttf}[
     Path=fonts/,
-    BoldFont=calibri-bold.ttf,
-    ItalicFont=calibri.ttf,
-    BoldItalicFont=calibri-bold.ttf,
-    ItalicFeatures={FakeSlant=0.18},
-    BoldItalicFeatures={FakeSlant=0.18}
+    BoldFont=Carlito-Bold.ttf,
+    ItalicFont=Carlito-Italic.ttf,
+    BoldItalicFont=Carlito-BoldItalic.ttf
   ]
-  \setsansfont{Arial}
+  \setsansfont{Carlito-Regular.ttf}[
+    Path=fonts/,
+    BoldFont=Carlito-Bold.ttf,
+    ItalicFont=Carlito-Italic.ttf,
+    BoldItalicFont=Carlito-BoldItalic.ttf
+  ]
 \fi
 
 \definecolor{OSDPBlue}{HTML}{0B1F4A}

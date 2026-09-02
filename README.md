@@ -8,6 +8,33 @@ This folder builds the OSDP PIV proposal PDF. Most edits should be made in `sect
 - `tex/` - shared template, table, color, and font helpers.
 - `scripts/` - vector and demo utilities.
 - `Makefile` - run `make` to rebuild `osdp-piv-proposal.pdf`.
+- `fonts/` - Carlito, the typeface used by the document class.
+
+## Requirements
+
+- A TeX distribution providing XeLaTeX and `latexmk`. On macOS, install
+  [MacTeX](https://tug.org/mactex/mactex-download.html). On Windows, install
+  [MiKTeX](https://miktex.org/download). Both ship `latexmk`; if it is missing,
+  see [these instructions](https://mgeier.github.io/latexmk.html).
+- XeLaTeX specifically. The build runs `latexmk -xelatex` because the document
+  class loads its fonts through `fontspec`.
+- Nothing else. Fonts are vendored in `fonts/`, so there is no font to install,
+  download, or rename.
+
+Build with `make`, then check the generated `osdp-piv-proposal.pdf`.
+
+Two optional targets need more:
+
+- `make redline` requires `latexdiff` and `latexpand` (see below).
+- `make test` requires Python 3 and the packages listed in `requirements.txt`.
+
+## Fonts
+
+The document is set in [Carlito](https://github.com/googlefonts/carlito), which
+is metrically compatible with Calibri and licensed under the SIL Open Font
+License. The regular, bold, italic, and bold italic files live in `fonts/`
+alongside a copy of the license, and `tex/osdp-report.cls` loads them by path.
+Keep `fonts/OFL.txt` in place when redistributing the repository.
 
 ## Editing Workflow
 

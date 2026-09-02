@@ -1,4 +1,5 @@
 *.ttf
+!fonts/Carlito-*.ttf
 build/
 ~$*
 reference/

@@ -10,7 +10,10 @@ if [[ -z "$base_ref" ]]; then
   exit 2
 fi
 
-for tool in git tar latexpand latexdiff latexmk; do
+latexpand_tool="${LATEXPAND:-latexpand}"
+latexdiff_tool="${LATEXDIFF:-latexdiff}"
+
+for tool in git tar "$latexpand_tool" "$latexdiff_tool" latexmk; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "Missing required tool: $tool" >&2
     echo "For TeX Live, install the redline tools with: tlmgr install latexdiff latexpand" >&2
@@ -31,12 +34,12 @@ git archive "$base_commit" | tar -x -C "$scratch_dir/base"
 
 (
   cd "$scratch_dir/base"
-  latexpand main.tex
+  "$latexpand_tool" main.tex
 ) > "$redline_dir/base.tex"
 
-latexpand main.tex > "$redline_dir/current.tex"
+"$latexpand_tool" main.tex > "$redline_dir/current.tex"
 
-latexdiff \
+"$latexdiff_tool" \
   --encoding=utf8 \
   --type=UNDERLINE \
   "$redline_dir/base.tex" \

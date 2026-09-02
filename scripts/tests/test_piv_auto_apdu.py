@@ -31,12 +31,47 @@ from render_piv_auto_appendix_tables import (
     segmented_dynamic_auth_response,
     segmented_general_authenticate_apdu,
 )
+from simulate_piv_auto import (
+    build_pivmode_payload,
+    build_vciloada_payload,
+    chunk_multipart_payload,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class PivAutoApduTests(unittest.TestCase):
+    def test_generic_multipart_fields_reassemble_complete_payload(self):
+        payload = bytes(range(23))
+        fragments = chunk_multipart_payload(
+            payload, 7, message="osdp_PIVMODE", message_code="0xAE"
+        )
+        self.assertEqual({fragment["MpSizeTotal"] for fragment in fragments}, {len(payload)})
+        self.assertEqual([fragment["MpOffset"] for fragment in fragments], [0, 7, 14, 21])
+        self.assertEqual([fragment["MpFragmentSize"] for fragment in fragments], [7, 7, 7, 2])
+        self.assertEqual(
+            b"".join(bytes.fromhex(fragment["fragment_data_hex"]) for fragment in fragments),
+            payload,
+        )
+
+    def test_pivmode_payload_encodes_complete_configuration(self):
+        entropy = bytes(range(32))
+        payload = build_pivmode_payload(7, 42, entropy)
+        self.assertEqual(len(payload), 48)
+        self.assertEqual(payload[:3], b"\x01\x01\x03")
+        self.assertEqual(payload[3:7], (7).to_bytes(4, "little"))
+        self.assertEqual(payload[7:11], (42).to_bytes(4, "little"))
+        self.assertEqual(payload[-5:], b"\x01\x03\x01\x03\x00")
+
+    def test_vciloada_payload_includes_metadata_in_total(self):
+        anchor = b"\x7f\x50\x01\x00"
+        payload = build_vciloada_payload(anchor, b"12345678", anchor_id=1)
+        self.assertEqual(len(payload), 12 + len(anchor))
+        self.assertEqual(payload[:10], b"\x00\x01" + b"12345678")
+        self.assertEqual(payload[10:12], len(anchor).to_bytes(2, "little"))
+        self.assertEqual(payload[12:], anchor)
+
     def test_live_capture_reader_selection_fails_on_missing_requested_reader(self):
         with self.assertRaises(SystemExit) as caught:
             select_reader(["Reader A", "Reader B"], "Missing Reader")
@@ -171,6 +206,20 @@ class PivAutoApduTests(unittest.TestCase):
         self.assertNotIn("generated_at", report["summary"])
         for item in report["profile_coverage"]:
             self.assertNotIn("Generated in-memory", item["source"])
+        self.assertEqual(report["poll_response"]["reply"], "osdp_PIVSTATUS")
+        for group in [report["poll_response"], *report["multipart_commands"].values()]:
+            for fragment in group["fragments"]:
+                self.assertEqual(
+                    set(fragment),
+                    {
+                        "message",
+                        "message_code",
+                        "MpSizeTotal",
+                        "MpOffset",
+                        "MpFragmentSize",
+                        "fragment_data_hex",
+                    },
+                )
 
     def test_pivstatusr_preserves_dynamic_authentication_template(self):
         payload = (REPO_ROOT / "test-vectors" / "piv-auto-demo" / "generated" / "pivstatusr-payload.bin").read_bytes()

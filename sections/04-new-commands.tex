@@ -268,7 +268,7 @@ PD storage accounting for VCI trust anchors is variable-length. A PD \textbf{SHA
   \label{tab:vci-trust-anchor-record-format}
   0x7F50 & Variable & VCI Trust Anchor Record & OSDP-defined record used to verify a secure messaging CVC or an Intermediate CVC. \\\hline
   0x80 & 1 & Record Profile Identifier & \code{0x01}. \\\hline
-  0x42 & 8 & Issuer Identifier Number & Anchor selector. This value \textbf{SHALL} match the IIN in the \code{osdp_PIV_VCILOADTA} metadata. \\\hline
+  0x42 & 8 & Issuer Identifier Number & Anchor selector. This value \textbf{SHALL} match the IIN in the \code{osdp_PIVVCILOADTA} metadata. \\\hline
   0x7F49 & 1-550 & SubjectPublicKeyInfo & DER-encoded X.509 SubjectPublicKeyInfo for the public key trusted by the ACU. Supported public-key algorithms are RSA public keys up to 4096 bits and EC public keys for P-256 or P-384. \\\hline
 \end{SimpleTable}
 

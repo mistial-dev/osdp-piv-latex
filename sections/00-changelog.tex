@@ -2,6 +2,14 @@
 \addcontentsline{toc}{section}{Changelog}
 
 \begin{description}
+\item[2026-09-02] Made proposal builds self-contained by vendoring the SIL-licensed
+Carlito typeface, replacing system Calibri and Arial dependencies with real regular,
+bold, italic, and bold-italic faces, and documenting the XeLaTeX and \texttt{latexmk}
+requirements. Completed the Enhanced PIV message-name cleanup by applying the compact
+OSDP naming convention consistently to \code{osdp_PIVLOADTPK},
+\code{osdp_PIVXMITPAIRING}, \code{osdp_PIVVCILOADTA},
+\code{osdp_PIVVCITASTATUS}, and \code{osdp_PIVVCITASTATUSR}; command and reply codes,
+payloads, and behavior are unchanged.
 \item[2026-08-12] Proposed Secure PIN Entry changes and consistency cleanup:
 \begin{itemize}
   \item Proposed clear, mode-specific SPE behavior for status, PIN acquisition and verification, cached-PIN verification, cache/abort, and attempts-remaining queries. The proposal also defines finite default timeouts, cache and PIN-verified lifecycles, and ACK/poll completion behavior.

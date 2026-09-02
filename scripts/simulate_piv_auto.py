@@ -454,22 +454,63 @@ def parse_dynamic_auth_template(template: bytes) -> dict[str, bytes]:
     return {tag.hex().upper(): value for tag, value, _ in children(dat_value)}
 
 
-def chunk_status_payload(payload: bytes, fragment_size: int) -> list[dict[str, Any]]:
-    """Represent OSDP 2.2-style multi-part poll response fragments."""
+def chunk_multipart_payload(
+    payload: bytes,
+    fragment_size: int,
+    *,
+    message: str,
+    message_code: str,
+) -> list[dict[str, Any]]:
+    """Represent one logical payload using the generic OSDP multipart fields."""
+    if fragment_size <= 0:
+        raise ValueError("fragment size must be greater than zero")
     fragments = []
     for offset in range(0, len(payload), fragment_size):
         chunk = payload[offset : offset + fragment_size]
         fragments.append(
             {
-                "reply": "osdp_PIVSTATUSR",
-                "reply_code": "0x89",
-                "total": len(payload),
-                "offset": offset,
-                "data_len": len(chunk),
-                "data_hex": hexstr(chunk),
+                "message": message,
+                "message_code": message_code,
+                "MpSizeTotal": len(payload),
+                "MpOffset": offset,
+                "MpFragmentSize": len(chunk),
+                "fragment_data_hex": hexstr(chunk),
             }
         )
     return fragments
+
+
+def build_pivmode_payload(series_counter: int, sequence_counter: int, supplemental_entropy: bytes) -> bytes:
+    """Build a complete PIVMODE logical payload with one PIV Auto configuration."""
+    entry = encode_tlv(b"\x01", b"\x01\x03\x00")  # PIV, contact/contactless, default AID.
+    return b"".join(
+        [
+            b"\x01",  # PIV Auto enabled.
+            b"\x01",  # One Configuration Entry TLV.
+            b"\x03",  # Contact and contactless globally permitted.
+            series_counter.to_bytes(4, "little"),
+            sequence_counter.to_bytes(4, "little"),
+            supplemental_entropy,
+            entry,
+        ]
+    )
+
+
+def build_vciloada_payload(trust_anchor_record: bytes, anchor_iin: bytes, anchor_id: int = 1) -> bytes:
+    """Build a complete PIVVCILOADTA load/replace logical payload."""
+    if not 1 <= anchor_id <= 128:
+        raise ValueError("trust anchor ID must be in the range 1-128")
+    if len(anchor_iin) != 8:
+        raise ValueError("trust anchor IIN must be exactly eight bytes")
+    return b"".join(
+        [
+            b"\x00",  # Load or replace.
+            bytes([anchor_id]),
+            anchor_iin,
+            len(trust_anchor_record).to_bytes(2, "little"),
+            trust_anchor_record,
+        ]
+    )
 
 
 def build_status_payload(series_counter: int, sequence_counter: int, signed_response: bytes) -> bytes:
@@ -700,7 +741,14 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
         raise SimulationFailure("ACU rejected signed response: card authentication signature is invalid") from exc
 
     status_payload = build_status_payload(series_counter, sequence_counter, signed_response)
-    fragments = chunk_status_payload(status_payload, args.fragment_size)
+    pivmode_payload = build_pivmode_payload(series_counter, sequence_counter, supplemental_entropy)
+    vciloada_payload = build_vciloada_payload(trust_anchor_record, loaded_anchor_iin)
+    status_fragments = chunk_multipart_payload(
+        status_payload,
+        args.fragment_size,
+        message="osdp_PIVSTATUS",
+        message_code="0x89",
+    )
 
     generated_dir = fixture_dir / "generated"
     generated_dir.mkdir(parents=True, exist_ok=True)
@@ -711,6 +759,8 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
     if vector_material["content_signing_certificate"]:
         (generated_dir / "content-signing-certificate.der").write_bytes(vector_material["content_signing_certificate"])
     (generated_dir / "pivstatusr-payload.bin").write_bytes(status_payload)
+    (generated_dir / "pivmode-payload.bin").write_bytes(pivmode_payload)
+    (generated_dir / "pivvciloadta-payload.bin").write_bytes(vciloada_payload)
 
     log.update(
         {
@@ -763,11 +813,38 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
                 for profile_id in profile_ids
             ],
             "poll_response": {
-                "reply": "osdp_PIVSTATUSR",
+                "reply": "osdp_PIVSTATUS",
                 "reply_code": "0x89",
                 "multi_part_fragment_size": args.fragment_size,
                 "payload_length": len(status_payload),
-                "fragments": fragments,
+                "fragments": status_fragments,
+            },
+            "multipart_commands": {
+                "pivmode": {
+                    "command": "osdp_PIVMODE",
+                    "command_code": "0xAE",
+                    "payload_length": len(pivmode_payload),
+                    "fragments": chunk_multipart_payload(
+                        pivmode_payload,
+                        args.fragment_size,
+                        message="osdp_PIVMODE",
+                        message_code="0xAE",
+                    ),
+                },
+                "pivvciloadta": {
+                    "command": "osdp_PIVVCILOADTA",
+                    "command_code": "0xAF",
+                    "trust_anchor_id": 1,
+                    "issuer_identifier_number_hex": hexstr(loaded_anchor_iin),
+                    "anchor_length": len(trust_anchor_record),
+                    "payload_length": len(vciloada_payload),
+                    "fragments": chunk_multipart_payload(
+                        vciloada_payload,
+                        args.fragment_size,
+                        message="osdp_PIVVCILOADTA",
+                        message_code="0xAF",
+                    ),
+                },
             },
             "acu_validation": {
                 "x509_path": [
@@ -808,6 +885,8 @@ def run_simulation(args: argparse.Namespace) -> dict[str, Any]:
                 "smcs": "test-vectors/piv-auto-demo/generated/smcs-5fc122.bin",
                 "content_signing_certificate": "test-vectors/piv-auto-demo/generated/content-signing-certificate.der",
                 "pivstatusr_payload": "test-vectors/piv-auto-demo/generated/pivstatusr-payload.bin",
+                "pivmode_payload": "test-vectors/piv-auto-demo/generated/pivmode-payload.bin",
+                "pivvciloadta_payload": "test-vectors/piv-auto-demo/generated/pivvciloadta-payload.bin",
             },
             "result": {"passed": True, "failure_reason": None},
         }

@@ -1,6 +1,6 @@
 \begin{PacketTable}{VCI Trust Anchor Load (osdp\_PIVVCILOADTA)}
   \PacketRow{1}{CMND}{Command identifier.}{0xAF (tentative)}
-  \PacketRow{1}{Operation}{\code{0x00} load/replace anchor; \code{0x01} delete anchor. Anchor inventory is requested with \code{osdp_PIV_VCITASTATUS}.}{0x00-0x01}
+  \PacketRow{1}{Operation}{\code{0x00} load/replace anchor; \code{0x01} delete anchor. Anchor inventory is requested with \code{osdp_PIVVCITASTATUS}.}{0x00-0x01}
   \PacketRow{1}{Trust Anchor ID}{Controller-assigned identifier for the anchor (1-128).}{0x00-0xFF}
   \PacketRow{8}{Issuer Identifier Number}{The leftmost eight bytes of the subjectKeyIdentifier from the content-signing X.509 certificate. This value \textbf{SHALL} match the IIN field in the VCI trust anchor record (tag \code{0x42}) and is used as the anchor selector during VCI establishment.}{0x00-0xFF}
   \PacketRow{2}{Anchor Length}{Total size of the variable-length VCI trust anchor record, least-significant byte first. Set to \code{0x0000} when deleting.}{0x0000-0x0240}

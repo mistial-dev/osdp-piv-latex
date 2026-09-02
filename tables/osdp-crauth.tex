@@ -1,8 +1,8 @@
 \begin{PacketTable}{Authentication Challenge (osdp\_CRAUTH)}
   \PacketRow{1}{CMND}{Command identifier.}{0xA5}
-  \PacketRow{2}{TOTAL}{Length of the complete message, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{OFFSET}{Offset of this fragment within the complete message, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{DATA\_LEN}{Length of the fragment payload, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpSizeTotal}{Length of the complete message, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpOffset}{Offset of this fragment within the complete message, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpFragmentSize}{Length of the fragment payload, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{1}{Algorithm}{Cryptographic mechanism. Supported values include \code{0x05}/\code{0x06}/\code{0x07} (RSA private-key operation), \code{0x08}/\code{0x0A}/\code{0x0C} (AES encryption with 128/192/256-bit keys), and \code{0x11}/\code{0x14} (ECC P-256/P-384; operation depends on the key reference).}{0x00-0xFF}
   \PacketRow{1}{Reference Identifier}{Key reference passed to \code{GENERAL AUTHENTICATE}.}{0x00-0xFF}
   \PacketRow{0-n}{Challenge}{For RSA algorithms, the encoded datum for the private-key operation. For AES algorithms, the plaintext block(s) to be encrypted, pre-padded by the ACU as required. For ECC \code{0x9A}/\code{0x9C}/\code{0x9E}, the pre-hashed signature input in tag \code{0x81}; for ECC \code{0x9D}/retired key-management references, the peer public key in tag \code{0x85}.}{0x00-0xFF}

@@ -9,7 +9,12 @@ requirements. Completed the Enhanced PIV message-name cleanup by applying the co
 OSDP naming convention consistently to \code{osdp_PIVLOADTPK},
 \code{osdp_PIVXMITPAIRING}, \code{osdp_PIVVCILOADTA},
 \code{osdp_PIVVCITASTATUS}, and \code{osdp_PIVVCITASTATUSR}; command and reply codes,
-payloads, and behavior are unchanged.
+payloads, and behavior are unchanged. Standardized multi-part messages on the generic OSDP
+\emph{MpSizeTotal}, \emph{MpOffset}, and \emph{MpFragmentSize} field names and moved the
+multi-part fields ahead of the reassembled \code{osdp_PIVMODE} and
+\code{osdp_PIVVCILOADTA} data. The current \code{osdp_PIVVCILOADTA} definition supersedes
+the anchor-only multi-part sizing described in the 2026-05-30 entry: its total now includes
+the 12-byte metadata block.
 \item[2026-08-12] Proposed Secure PIN Entry changes and consistency cleanup:
 \begin{itemize}
   \item Proposed clear, mode-specific SPE behavior for status, PIN acquisition and verification, cached-PIN verification, cache/abort, and attempts-remaining queries. The proposal also defines finite default timeouts, cache and PIN-verified lifecycles, and ACK/poll completion behavior.

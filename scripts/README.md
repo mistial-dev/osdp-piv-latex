@@ -249,7 +249,7 @@ python3 scripts/capture_piv_auto_apdus.py \
 
 ## `simulate_piv_auto.py`
 
-Simulates the proposed PIV Auto flow with real cryptography and emits a readable JSON log. The script does not parse raw OSDP packets; it logs representative ACU, PD, and card steps while deriving the PIV Auto KDK from simulated SC2 session keys, deriving the KMAC256 challenge, validating CVC signatures, signing with the card authentication key, and verifying the final response.
+Simulates the proposed PIV Auto flow with real cryptography and emits a readable JSON log. The script does not parse raw OSDP packets; it logs representative ACU, PD, and card steps while deriving the PIV Auto KDK from simulated SC2 session keys, deriving the KMAC256 challenge, validating CVC signatures, signing with the card authentication key, and verifying the final response. PIVMODE, PIVVCILOADTA, and PIVSTATUS examples use the generic `MpSizeTotal`, `MpOffset`, and `MpFragmentSize` fields and fragment their complete logical payloads.
 
 The demo uses reusable no-password PKCS#12 fixtures under
 `../test-vectors/piv-auto-demo/`, copied from GSA FICAM card-builder material.
@@ -270,6 +270,8 @@ Expected result:
 - `pd_validation.secure_cvc.signature_verified_with_intermediate_cvc`: `true`
 - `acu_validation.card_response_signature_verified`: `true`
 - `poll_response.reply_code`: `0x89`
+- `poll_response.reply`: `osdp_PIVSTATUS`
+- `multipart_commands`: complete PIVMODE and PIVVCILOADTA payloads with generic OSDP multipart fields
 - `profile_coverage[*].verified`: `true`
 
 Run negative examples:

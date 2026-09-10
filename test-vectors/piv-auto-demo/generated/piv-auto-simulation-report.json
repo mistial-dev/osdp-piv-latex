@@ -240,44 +240,103 @@
     }
   ],
   "poll_response": {
-    "reply": "osdp_PIVSTATUSR",
+    "reply": "osdp_PIVSTATUS",
     "reply_code": "0x89",
     "multi_part_fragment_size": 96,
     "payload_length": 319,
     "fragments": [
       {
-        "reply": "osdp_PIVSTATUSR",
-        "reply_code": "0x89",
-        "total": 319,
-        "offset": 0,
-        "data_len": 96,
-        "data_hex": "0000070000002A000000D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E709D49C7EFDD0432EACEA268AE905274C9E0708017C820104828201009BB1AA3875DB4E41107DD91CEAAC36FE4CE5F969E1F7B9B199DFAB38CFA1EE36FB"
+        "message": "osdp_PIVSTATUS",
+        "message_code": "0x89",
+        "MpSizeTotal": 319,
+        "MpOffset": 0,
+        "MpFragmentSize": 96,
+        "fragment_data_hex": "0000070000002A000000D13810D828AB6C10C339E5A1685A08C92ADE0A6184E739C3E709D49C7EFDD0432EACEA268AE905274C9E0708017C820104828201009BB1AA3875DB4E41107DD91CEAAC36FE4CE5F969E1F7B9B199DFAB38CFA1EE36FB"
       },
       {
-        "reply": "osdp_PIVSTATUSR",
-        "reply_code": "0x89",
-        "total": 319,
-        "offset": 96,
-        "data_len": 96,
-        "data_hex": "F197CD2777C4A6CE082623C9F36A9DC2514FE54DD12934AFCAE16DFE14FFCFC0F58E0A0F46567444968F1DE78B496B4222DB913A87B850139B1E2A730124C4ED169919F1EB5FA3E15617E89BB9CED8FA996A63E126C239EB6D142A5746FBEC3D"
+        "message": "osdp_PIVSTATUS",
+        "message_code": "0x89",
+        "MpSizeTotal": 319,
+        "MpOffset": 96,
+        "MpFragmentSize": 96,
+        "fragment_data_hex": "F197CD2777C4A6CE082623C9F36A9DC2514FE54DD12934AFCAE16DFE14FFCFC0F58E0A0F46567444968F1DE78B496B4222DB913A87B850139B1E2A730124C4ED169919F1EB5FA3E15617E89BB9CED8FA996A63E126C239EB6D142A5746FBEC3D"
       },
       {
-        "reply": "osdp_PIVSTATUSR",
-        "reply_code": "0x89",
-        "total": 319,
-        "offset": 192,
-        "data_len": 96,
-        "data_hex": "FA3B287F944EE45586BA5AEB64087BDA0661DF7254C42D9768141F7243382D61CC43A8CDBE4ADA849E05F013D947DF7FA608C38ABA3841B038AA69D77461B00053F59C4D34906BFBFD470A277D0722AAECD83117DE906BFCD36A16EFB00B3EAC"
+        "message": "osdp_PIVSTATUS",
+        "message_code": "0x89",
+        "MpSizeTotal": 319,
+        "MpOffset": 192,
+        "MpFragmentSize": 96,
+        "fragment_data_hex": "FA3B287F944EE45586BA5AEB64087BDA0661DF7254C42D9768141F7243382D61CC43A8CDBE4ADA849E05F013D947DF7FA608C38ABA3841B038AA69D77461B00053F59C4D34906BFBFD470A277D0722AAECD83117DE906BFCD36A16EFB00B3EAC"
       },
       {
-        "reply": "osdp_PIVSTATUSR",
-        "reply_code": "0x89",
-        "total": 319,
-        "offset": 288,
-        "data_len": 31,
-        "data_hex": "D4414F48528CCA4BE57826B4312424A65DABAD6FA1ECA3DAF55F6E6E1022C8"
+        "message": "osdp_PIVSTATUS",
+        "message_code": "0x89",
+        "MpSizeTotal": 319,
+        "MpOffset": 288,
+        "MpFragmentSize": 31,
+        "fragment_data_hex": "D4414F48528CCA4BE57826B4312424A65DABAD6FA1ECA3DAF55F6E6E1022C8"
       }
     ]
+  },
+  "multipart_commands": {
+    "pivmode": {
+      "command": "osdp_PIVMODE",
+      "command_code": "0xAE",
+      "payload_length": 48,
+      "fragments": [
+        {
+          "message": "osdp_PIVMODE",
+          "message_code": "0xAE",
+          "MpSizeTotal": 48,
+          "MpOffset": 0,
+          "MpFragmentSize": 48,
+          "fragment_data_hex": "010103070000002A00000000112233445566778899AABBCCDDEEFF102132435465768798A9BACBDCEDFE0F0103010300"
+        }
+      ]
+    },
+    "pivvciloadta": {
+      "command": "osdp_PIVVCILOADTA",
+      "command_code": "0xAF",
+      "trust_anchor_id": 1,
+      "issuer_identifier_number_hex": "4CC9C7B3A4F1C83E",
+      "anchor_length": 317,
+      "payload_length": 329,
+      "fragments": [
+        {
+          "message": "osdp_PIVVCILOADTA",
+          "message_code": "0xAF",
+          "MpSizeTotal": 329,
+          "MpOffset": 0,
+          "MpFragmentSize": 96,
+          "fragment_data_hex": "00014CC9C7B3A4F1C83E3D017F5082013880010142084CC9C7B3A4F1C83E7F4982012630820122300D06092A864886F70D01010105000382010F003082010A0282010100D37FA07410ACD32B75A7664393D7469AC0597206ED0ADA44FC0A7A1F"
+        },
+        {
+          "message": "osdp_PIVVCILOADTA",
+          "message_code": "0xAF",
+          "MpSizeTotal": 329,
+          "MpOffset": 96,
+          "MpFragmentSize": 96,
+          "fragment_data_hex": "8069E3D8937551DBFE7B4BCF5C70D476FE18749BD3114473C6C61297DC7A2149A7BF49EC859A32039D9019E9EBB097D942B41F06EB67E7ACAF568E37750C8DFBEC85B89D7E9D6669A5073442213A84B59256990A817EDADABA84F8D5A012D8B5"
+        },
+        {
+          "message": "osdp_PIVVCILOADTA",
+          "message_code": "0xAF",
+          "MpSizeTotal": 329,
+          "MpOffset": 192,
+          "MpFragmentSize": 96,
+          "fragment_data_hex": "286CCE89598CC93A0518449C646FCF191545E78FE076EAD3ED947CC4DCF1C3A366E0EEA194219D2D8CE2B6C342CC0A276C2408FA4620ECBBF255EAE6499CD06073FB1160887854DE0231208E839C4C87E82670ED1BBD51183A12CC28EA62DB37"
+        },
+        {
+          "message": "osdp_PIVVCILOADTA",
+          "message_code": "0xAF",
+          "MpSizeTotal": 329,
+          "MpOffset": 288,
+          "MpFragmentSize": 41,
+          "fragment_data_hex": "F9D249234C77A5884368853AE94BBDF75D7FF072F18FD12CA6D362E868BB8AD48548CC070203010001"
+        }
+      ]
+    }
   },
   "acu_validation": {
     "x509_path": [
@@ -313,7 +372,9 @@
     "secure_cvc": "test-vectors/piv-auto-demo/generated/secure-card-cvc-7f21.bin",
     "smcs": "test-vectors/piv-auto-demo/generated/smcs-5fc122.bin",
     "content_signing_certificate": "test-vectors/piv-auto-demo/generated/content-signing-certificate.der",
-    "pivstatusr_payload": "test-vectors/piv-auto-demo/generated/pivstatusr-payload.bin"
+    "pivstatusr_payload": "test-vectors/piv-auto-demo/generated/pivstatusr-payload.bin",
+    "pivmode_payload": "test-vectors/piv-auto-demo/generated/pivmode-payload.bin",
+    "pivvciloadta_payload": "test-vectors/piv-auto-demo/generated/pivvciloadta-payload.bin"
   },
   "result": {
     "passed": true,

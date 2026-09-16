@@ -7,6 +7,7 @@ This folder builds the OSDP PIV proposal PDF. Most edits should be made in `sect
 - `tables/` - command tables and small reference tables.
 - `tex/` - shared template, table, color, and font helpers.
 - `scripts/` - vector and demo utilities.
+- `worked-examples/` - reproducible simulated OSDP exchanges and source fixtures.
 - `Makefile` - run `make` to rebuild `osdp-piv-proposal.pdf`.
 - `fonts/` - Carlito, the typeface used by the document class.
 
@@ -23,10 +24,14 @@ This folder builds the OSDP PIV proposal PDF. Most edits should be made in `sect
 
 Build with `make`, then check the generated `osdp-piv-proposal.pdf`.
 
-Two optional targets need more:
+Optional targets:
 
 - `make redline` requires `latexdiff` and `latexpand` (see below).
 - `make test` requires Python 3 and the packages listed in `requirements.txt`.
+- `make pivdata-examples` uses Python 3 to generate and independently check the
+  PIVGETDATA exchanges, then generate their LaTeX example tables. Run it before
+  `make pdf` after changing PIVGETDATA fixtures or simulation code. See
+  [PIVGETDATA worked examples](worked-examples/pivdata/README.md).
 
 ## Fonts
 
@@ -134,7 +139,10 @@ Short literals such as `\code{0x00}` may continue to use `\texttt`.
 
 ## Build Outputs
 
-The only PDF intended to be kept in the repository is `osdp-piv-proposal.pdf`. The `build/` directory contains generated intermediate output, including `build/main.pdf`, and is ignored.
+The repository includes `osdp-piv-proposal.pdf` and the review copy
+`osdp-piv-proposal-redline.pdf`. The `build/` directory contains intermediate
+output and is ignored. Regenerate the redline against the stated baseline
+before replacing the review copy.
 
 ## Troubleshooting
 

@@ -2,6 +2,12 @@
 \addcontentsline{toc}{section}{Changelog}
 
 \begin{description}
+\item[2026-09-16] PIV command updates:
+\begin{itemize}
+  \item Renamed \texttt{osdp\_PDERROR} to \texttt{osdp\_PIVERROR} and added PIVGETDATA error codes.
+  \item Renamed PIVDATA/PIVDATAR to PIVGETDATA/PIVGETDATAR and revised encoding, TLV selection, byte ranges, and multi-part replies.
+  \item Clarified use of established credential SM for GET DATA, PUT DATA, and SELECT.
+\end{itemize}
 \item[2026-09-02] Made proposal builds self-contained by vendoring the SIL-licensed
 Carlito typeface, replacing system Calibri and Arial dependencies with real regular,
 bold, italic, and bold-italic faces, and documenting the XeLaTeX and \texttt{latexmk}

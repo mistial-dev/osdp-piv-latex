@@ -14,6 +14,11 @@ all: pdf
 test:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
+pivdata-examples:
+	python3 scripts/generate_pivdata_examples.py
+	python3 scripts/check_pivdata_examples.py
+	python3 scripts/render_pivdata_examples.py
+
 live-piv-auto:
 	PIV_PROFILES="$(PIV_PROFILES)" scripts/load_ykman_committed_material.sh
 
@@ -34,4 +39,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(PDF)
 
-.PHONY: all test live-piv-auto pdf redline clean
+.PHONY: all test pivdata-examples live-piv-auto pdf redline clean

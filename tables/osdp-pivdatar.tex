@@ -1,7 +1,7 @@
-\begin{PacketTable}{PIV Data Reply (osdp\_PIVDATAR)}
+\begin{PacketTable}{PIV Data Reply (osdp\_PIVGETDATAR)}
   \PacketRow{1}{CMND}{Reply identifier.}{0x80}
-  \PacketRow{2}{MpSizeTotal}{Length in bytes of the complete data object or tagged element, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{MpOffset}{Offset in bytes of this fragment within the complete payload, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{MpFragmentSize}{Length in bytes of the data carried in this fragment, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{0-n}{Card Data}{Requested data bytes exactly as returned by the credential. When a tagged element was selected, this sequence contains the complete selected BER-TLV, including tag, length, and value.}{0x00-0xFF}
+  \PacketRow{2}{MpSizeTotal}{Total number of requested data bytes across all fragments. Least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpOffset}{Position of this fragment's first byte within the requested data. Least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{2}{MpFragmentSize}{Number of Card Data bytes in this reply. Least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0-n}{Card Data}{The bytes returned in this reply, in their original order.}{0x00-0xFF}
 \end{PacketTable}

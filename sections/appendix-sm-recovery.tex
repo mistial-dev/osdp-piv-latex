@@ -1,0 +1,59 @@
+\subsection{Recovering trust for contactless PIV Auto}
+\label{ex:sm-recovery}
+
+This example uses a credential that supports SM and requires a pairing code
+for VCI. PIV Auto is configured for contactless authentication with key
+\code{0x9A}, but the PD's trust store is empty. The ACU already holds the roots
+and validation policy authorized for the deployment. Figure~\ref{fig:sm-recovery}
+shows the recovery sequence.
+
+\input{figures/sm-vci-recovery}
+
+The first PIV Auto attempt ends with Result \code{0x02}, Detail \code{0x01}
+(trust store empty). The ACU requests the SM diagnostic record, then reads the
+Secure Messaging Certificate Signer object with PIVGETDATA, Object Identifier
+\code{0x5FC122}, Tag Length zero, Offset zero, and Requested Length zero.
+When the read succeeds, the reply contains the complete object, including
+signer certificate tag \code{0x70} and any intermediate CVC in tag \code{0x7F21}.
+The PD reads the credential through the contactless interface. If the object
+is absent or the credential denies access, the PD reports the corresponding
+PIVERROR. The ACU then selects another supported workflow or ends the
+transaction. Recovery relies on the credential returning the object.
+
+The ACU validates the signer certificate's chain to an authorized root,
+validity period, revocation status, and PIV or PIV-I content-signing extended
+key usage. The ACU checks any intermediate CVC's signature and linkage as
+specified under PIVVCILOADTA. The anchor record contains the validated signer's
+public key and the IIN derived from that certificate's subjectKeyIdentifier.
+The ACU loads an anchor only after these checks succeed.
+An IIN match alone provides no authorization to trust a certificate.
+
+After the load succeeds, the ACU reapplies the PIVMODE configuration. The PD
+starts a new attempt, establishes SM, and reports Result \code{0x05}, Detail
+\code{0x01} (pairing code required). The ACU sends PIVXMITPAIRING and waits for
+CARDSTATUSR with security status \code{0x01} (SM and VCI established).
+The ACU then sends PIVSPE Mode \code{0x01}, with Auto Execute clear, to collect
+and verify the PIN. After successful verification, the ACU reads the PIV
+Authentication certificate (Object Identifier \code{0x5FC105}) and uses CRAUTH
+with key \code{0x9A} and a fresh challenge. Certificate and challenge-response
+validation remain the ACU's responsibility.
+
+The ACU waits for a successful result at each step before issuing the next
+command. An error ends this recovery sequence. These are commanded operations
+after the automatic attempt has ended. The PD
+returns each command's defined reply; the sequence generates no second PIV Auto
+result. PIVMODE remains configured for the next credential presentation.
+Reapplying PIVMODE after pairing or PIN verification would clear the state
+needed for the commanded authentication.
+
+If SM or VCI is unsupported, the ACU chooses a supported interface or
+authentication method explicitly, or rejects the transaction. If a signature
+or cryptogram check fails, the PD blocks credential operations and retains
+the diagnostic record. The ACU investigates that failure before requesting
+a new attempt. Trust recovery is appropriate for missing authorized trust
+material; failed cryptographic checks are security failures.
+
+This is a control-flow example. The preceding captured SM/VCI packet examples
+cover pairing and PIN verification. The companion
+\href{run:worked-examples/sm-vci/trust-recovery.md}{trust-recovery example}
+records the command sequence and validation decisions.

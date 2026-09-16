@@ -355,7 +355,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4137
+      "expected_error": 4135
     },
     {
       "name": "nested-not-direct",
@@ -375,7 +375,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138
+      "expected_error": 4136
     },
     {
       "name": "malformed-later-child",
@@ -385,7 +385,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138
+      "expected_error": 4136
     },
     {
       "name": "indefinite-container",
@@ -395,7 +395,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138
+      "expected_error": 4136
     },
     {
       "name": "offset-beyond",
@@ -415,8 +415,8 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4135,
-      "injected_error": 4135
+      "expected_error": 4134,
+      "injected_error": 4134
     },
     {
       "name": "timeout",

@@ -2,8 +2,8 @@
   \label{tab:pivspe-modes}
   \ValueDescriptionRow{0x00}{Report the persistent SPE status without initiating PIN entry.}
   \ValueDescriptionRow{0x01}{Acquire a PIN and verify it with the credential currently present.}
-  \ValueDescriptionRow{0x02}{Execute VCI PIN verification using a cached PIN.}
-  \ValueDescriptionRow{0x03}{Execute normal PIN verification using a cached PIN.}
+  \ValueDescriptionRow{0x02}{Verify the cached PIN over established VCI.}
+  \ValueDescriptionRow{0x03}{Verify the cached PIN over the selected credential interface. Use established credential SM when present.}
   \ValueDescriptionRow{0x04}{Acquire and cache a PIN.}
   \ValueDescriptionRow{0x05}{Abort active PIN entry and clear the cached PIN.}
   \ValueDescriptionRow{0x06}{Report attempts remaining without initiating PIN verification.}

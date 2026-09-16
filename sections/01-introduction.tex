@@ -8,7 +8,13 @@ The key words \textbf{SHALL}, \textbf{SHALL NOT}, \textbf{SHOULD},
 \textbf{SHOULD NOT}, and \textbf{MAY} are interpreted as described in RFC~2119
 and RFC~8174 when they appear in capitals.
 
-Compatibility is specified per command. The enhanced PIVGETDATA request is a
-breaking change; its response retains OSDP~2.2 multi-part framing and reports
-failures through a mandatory PIVERROR on a later poll. The CRAUTH failure
-behavior described in Section~\ref{sec:osdp22-changes} is unchanged.
+Tables express protocol sizes, lengths, offsets, and numeric values in
+hexadecimal with the prefix \code{0x}. Packet and APDU dumps use hexadecimal
+byte pairs without repeated prefixes. Standard names, bit positions, and
+elapsed-time annotations retain their usual notation.
+
+OSDP~3.0 introduces a new PIVGETDATA request format at command code
+\code{0xA3}. PDs support the new format and may also accept the OSDP~2.2
+format; the command data length distinguishes the two. OSDP~3.0 ACUs use
+the new format with PDs that support it. The revised CRAUTH and PIVGETDATA
+transactions return data on success and one terminal PIVERROR on failure.

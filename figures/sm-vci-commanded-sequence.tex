@@ -1,0 +1,42 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily,
+  stage/.style={draw=OSDPBlue,rounded corners=3pt,fill=OSDPLightGray,
+    text width=12.5cm,align=left,inner sep=10pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[stage] (cache) at (0,0) {
+  \textbf{1. Collect the cardholder's PIN}\\[4pt]
+  The ACU asks the PD to collect and cache the PIN. The cardholder enters
+  the PIN at the reader. The PD retains the PIN and reports completion
+  to the ACU.\\[4pt]
+  {\small Command: PIVSPE Mode 0x04. Completion: PIVSPER.}};
+\node[stage,anchor=north] (prepare) at ([yshift=-0.55cm]cache.south) {
+  \textbf{2. Prepare the contactless credential}\\[4pt]
+  When the credential is presented, the PD selects the PIV application and checks
+  SM support. The PD reads the Discovery Object for PIN and pairing policy,
+  then establishes SM using a loaded trust anchor. The ACU requests credential
+  status and learns that SM is established and pairing is required.\\[4pt]
+  {\small Command: CARDSTATUS Type 0x01. Completion: CARDSTATUSR Type 0x01.}};
+\node[stage,anchor=north] (pair) at ([yshift=-0.55cm]prepare.south) {
+  \textbf{3. Enable VCI with the pairing code}\\[4pt]
+  The ACU supplies the credential's eight-digit pairing code. The PD sends the code
+  to the credential through SM. The credential verifies the code, enabling VCI for
+  contactless PIN verification. The PD reports the updated status.\\[4pt]
+  {\small Command: PIVXMITPAIRING. Completion: CARDSTATUSR Type 0x01.}};
+\node[stage,anchor=north] (verify) at ([yshift=-0.55cm]pair.south) {
+  \textbf{4. Verify the cached PIN}\\[4pt]
+  The ACU requests PIN verification. The PD sends the cached PIN to the credential
+  through SM. The credential checks the PIN, and the PD reports the result to the
+  ACU. A successful result permits operations protected by that PIN, subject
+  to the credential's access rules.\\[4pt]
+  {\small Command: PIVSPE Mode 0x02. Completion: PIVSPER.}};
+\draw[flow] (cache.south) -- (prepare.north);
+\draw[flow] (prepare.south) -- (pair.north);
+\draw[flow] (pair.south) -- (verify.north);
+\end{tikzpicture}
+\caption{Contactless PIN verification with a pairing code. The ACU directs the
+reader (PD); the credential verifies the pairing code and PIN. Each OSDP command
+receives ACK when accepted and a completion reply on a later POLL.
+Appendix~\ref{app:sm-vci-examples} shows the packet exchanges.}
+\label{fig:sm-commanded-sequence}
+\end{figure}

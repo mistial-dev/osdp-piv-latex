@@ -2,6 +2,18 @@
 
 This folder contains small helper tools used to generate and check the VCI trust-anchor examples in the proposal.
 
+## Captured SM/VCI packet examples
+
+From the repository root, run `make sm-vci-examples` to replay the existing
+card captures, independently check their SM cryptography and OSDP frames, and
+generate the proposal tables. `sm_vci_replay.py` contains the simulated ACU/PD;
+`check_sm_vci_examples.py` performs the independent checks;
+`render_sm_vci_examples.py --check` checks that the printed examples are current.
+See [coverage and capture boundaries](../worked-examples/sm-vci/README.md).
+
+This workflow uses captured card exchanges. The optional live-card tools below
+are separate and are not invoked by the replay target.
+
 The examples below are written to be copied from this `scripts/` directory.
 
 ## Dependencies

@@ -1,0 +1,29 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\small,
+  actor/.style={draw=OSDPBlue,fill=OSDPLightGray,rounded corners=3pt,
+    minimum width=2.3cm,minimum height=0.65cm},
+  message/.style={->,thick,draw=OSDPBlue},
+  reply/.style={message,dashed},
+  note/.style={draw=OSDPBlue,fill=OSDPLightGray,align=center,
+    text width=6cm,inner sep=7pt}]
+\node[actor] at (0,0) {ACU};
+\node[actor] at (5.7,0) {PD};
+\node[actor] at (11.4,0) {Credential};
+\foreach \x in {0,5.7,11.4} \draw[gray,dashed] (\x,-0.4) -- (\x,-11.0);
+\draw[message] (0,-1.1) -- node[above,align=center]{PIVXMITPAIRING\\Pairing code supplied by the ACU} (5.7,-1.1);
+\draw[reply] (5.7,-1.9) -- node[above]{ACK: request accepted} (0,-1.9);
+\draw[message] (5.7,-3.0) -- node[above,align=center]{VERIFY pairing code (key 0x98)\\Protected by existing SM} (11.4,-3.0);
+\draw[reply] (11.4,-4.1) -- node[above,align=center]{Verified protected result: 0x6300\\Incorrect pairing code} (5.7,-4.1);
+\node[note] at (5.7,-5.7) {Pairing verification is cleared.\\SM remains established.\\VCI still requires successful pairing.};
+\draw[message] (0,-7.5) -- node[above]{POLL} (5.7,-7.5);
+\draw[reply] (5.7,-9.4) -- node[above,align=center,font=\sffamily\footnotesize]{PIVERROR 0x1023: security condition unmet\\SW1/SW2 = 0x6300\\Incorrect pairing code} (0,-9.4);
+\draw[message] (0,-10.8) -- node[above,align=center]{ACU chooses to retry:\\PIVXMITPAIRING with a corrected code} (5.7,-10.8);
+\node[note,text width=11.4cm] at (5.7,-12.5) {The new request uses the existing SM session.
+VCI becomes available after successful pairing; the PD reports that state in CARDSTATUSR.};
+\end{tikzpicture}
+\caption{Incorrect pairing code on a contactless credential that requires pairing.
+The pairing code originates at the ACU. Each retry is a new command; the PD
+never repeats VERIFY automatically.}
+\label{fig:sm-pairing-rejection}
+\end{figure}

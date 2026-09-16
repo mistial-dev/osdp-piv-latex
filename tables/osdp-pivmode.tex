@@ -1,13 +1,13 @@
 \begin{PacketTable}{Set PIV Mode (osdp\_PIVMODE)}
-  \PacketRow{1}{CMND}{Command identifier.}{0xAE (tentative)}
-  \PacketRow{2}{MpSizeTotal}{Total size of the reassembled configuration data beginning with PIV Mode Flags, least-significant byte first.}{0x0008-0xFFFF}
-  \PacketRow{2}{MpOffset}{Offset of this fragment within the reassembled configuration data, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{MpFragmentSize}{Number of configuration data bytes following the multi-part fields in this fragment, least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{1}{PIV Mode Flags}{First byte of the reassembled configuration data; global behaviour flags (Section~\ref{sec:pivmode}).}{0x00-0xFF}
-  \PacketRow{1}{Config Count}{Number of configuration entries (1-32).}{0x01-0x20}
-  \PacketRow{1}{Global Interface Mask}{Bitmask limiting interfaces available to all configurations (bit~0 contact, bit~1 contactless, bit~3 Bluetooth; bit~2 reserved and set to zero).}{0x00-0x0B}
-  \PacketRow{4}{Series Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
-  \PacketRow{4}{Sequence Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
-  \PacketRow{32}{Supplemental Entropy}{Conditional fixed-width field present only when PIV Auto is enabled. All zeroes are permitted but not recommended.}{32 octets}
-  \PacketRow{0-n}{TLV Data}{Sequence of Configuration Entry TLVs (Tag \code{0x01}) that follow the Global Interface Mask, or follow the conditional PIV Auto fields when PIV Auto is enabled.}{-}
+  \PacketRow{0x01}{CMND}{Command identifier.}{0xAE (tentative)}
+  \PacketRow{0x02}{MpSizeTotal}{Total size of the reassembled configuration data beginning with PIV Mode Flags, least-significant byte first.}{0x0008-0xFFFF}
+  \PacketRow{0x02}{MpOffset}{Offset of this fragment within the reassembled configuration data, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0x02}{MpFragmentSize}{Number of configuration data bytes following the multi-part fields in this fragment, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0x01}{PIV Mode Flags}{First byte of the reassembled configuration data; global behaviour flags (Section~\ref{sec:pivmode}).}{0x00-0xFF}
+  \PacketRow{0x01}{Config Count}{Number of configuration entries.}{0x01-0x20}
+  \PacketRow{0x01}{Global Interface Mask}{Bitmask limiting interfaces available to all configurations (bit~0 contact, bit~1 contactless, bit~3 Bluetooth; bit~2 reserved and set to zero).}{0x00-0x0B}
+  \PacketRow{0x04}{Series Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
+  \PacketRow{0x04}{Sequence Counter}{Conditional field present only when PIV Auto is enabled. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
+  \PacketRow{0x20}{Supplemental Entropy}{Conditional fixed-width field present only when PIV Auto is enabled. All zeroes are permitted but not recommended.}{0x20 octets}
+  \PacketRow{0x00-n}{TLV Data}{Sequence of Configuration Entry TLVs (Tag \code{0x01}) that follow the Global Interface Mask, or follow the conditional PIV Auto fields when PIV Auto is enabled.}{-}
 \end{PacketTable}

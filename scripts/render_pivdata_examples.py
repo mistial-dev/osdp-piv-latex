@@ -30,10 +30,10 @@ ERROR_MEANINGS = {
     0x1023: "credential security status not satisfied",
     0x1024: "data object or tag not found",
     0x1025: "VCI not established",
-    0x1027: "credential not present or removed",
-    0x1029: "ambiguous element selection",
-    0x102A: "malformed credential-object encoding",
-    0x102B: "transfer length exceeded",
+    0x1026: "credential not present or removed",
+    0x1027: "ambiguous element selection",
+    0x1028: "malformed credential-object encoding",
+    0x1029: "transfer length exceeded",
 }
 REPRESENTATIVE_CASES = (
     "discovery-whole", "discovery-pin-policy", "chuid-fascn", "chuid-fascn-value",

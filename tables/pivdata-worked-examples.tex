@@ -620,7 +620,7 @@ Offset & \texttt{0x0000} & Start at the selected tag. \\\hline
 Requested Length & \texttt{0x0000} & All remaining bytes. \\\hline
 \end{SimpleTable}
 
-Result: \texttt{osdp\_PIVERROR 0x1029} (ambiguous element selection); see Section~\ref{sec:piverror}.
+Result: \texttt{osdp\_PIVERROR 0x1027} (ambiguous element selection); see Section~\ref{sec:piverror}.
 
 \begingroup\small
 \begin{SimpleTable}{Command and reply exchange}{3}
@@ -629,6 +629,6 @@ Result: \texttt{osdp\_PIVERROR 0x1029} (ambiguous element selection); see Sectio
 ACU\newline \texttt{PIVGETDATA} & \texttt{53 01 10 00 05 A3 01 7E 01 30 00 00}\newline \texttt{00 00 DC 37} & Read request. \\*\hline
 PD\newline \texttt{ACK} & \texttt{53 81 08 00 05 40 39 35} & Command accepted. \\\hline
 ACU\newline \texttt{POLL} & \texttt{53 01 08 00 06 60 D8 66} & Poll \texttt{0x01}. \\*\hline
-PD\newline \texttt{PIVERROR} & \texttt{53 81 0A 00 06 8A 29 10 FF 02} & \texttt{0x1029} (ambiguous element selection) \\\hline
+PD\newline \texttt{PIVERROR} & \texttt{53 81 0A 00 06 8A 27 10 F0 21} & \texttt{0x1027} (ambiguous element selection) \\\hline
 \end{SimpleTable}
 \endgroup

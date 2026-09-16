@@ -32,6 +32,10 @@ Optional targets:
   PIVGETDATA exchanges, then generate their LaTeX example tables. Run it before
   `make pdf` after changing PIVGETDATA fixtures or simulation code. See
   [PIVGETDATA worked examples](worked-examples/pivdata/README.md).
+- `make sm-vci-examples` replays the existing SM/VCI captures, verifies their
+  cryptography and generated OSDP packets, and renders the example tables.
+  See [SM/VCI worked examples](worked-examples/sm-vci/README.md). No card reader
+  or new capture is needed.
 
 ## Fonts
 
@@ -62,6 +66,9 @@ tree, including uncommitted and untracked LaTeX inputs. It expands all
 `\input` and `\include` files before applying `latexdiff`, then writes
 `build/redline/osdp-piv-proposal-redline.pdf`. The first page identifies the
 baseline commit and current working-tree commit.
+
+For the current GET DATA and SM/VCI review, use `BASE=dc80bdf`. This keeps
+the committed GET DATA changes and the uncommitted SM/VCI changes in one redline.
 
 The redline requires the TeX Live `latexdiff` and `latexpand` packages. If
 they are missing, install them with:

@@ -2,7 +2,7 @@
 
 These deterministic simulator exchanges exercise the
 proposed Enhanced PIV request and OSDP 3.0 PIVGETDATAR multi-part delivery, retaining the
-OSDP 2.2 multi-part format.
+OSDP 3.0 multi-part format.
 The certificate, CHUID, Discovery and Key History response data come from the existing
 repository card captures. Their source files are unchanged. `manifest.json` records each
 source SHA-256, JSON field path, and explicit byte slice used for the fixed expected output.
@@ -29,11 +29,16 @@ physical-layer mark byte. Address is 1; replies have the direction bit set. CRC 
 is set, sequences cycle 1, 2, 3, 1, and CRC uses initial register 0x1D0F and polynomial
 0x1021. Frames are at most 128 bytes. A PIVGETDATAR frame holds at most 114 data bytes:
 5 header + 1 reply code + 6 multipart fields + 114 data + 2 CRC = 128.
-Multipart fields are exactly the OSDP 2.2 uint16 little-endian total/offset/fragment-size
+Multipart fields are exactly the OSDP 3.0 uint16 little-endian total/offset/fragment-size
 tuple, immediately after reply code 0x80. Reply offsets start at zero within the requested
 data, independently of the command's Offset. Only data bytes are divided across replies;
 each reply repeats the reply code and multi-part fields. TLV headers appear once in the
 reassembled data. A fragment boundary may split a tag, length, or value.
+
+OSDP 3.0 retains command code 0xA3. The old PIVDATA request has exactly 0x05
+data bytes; the new format has 0x07–0x0C. PDs distinguish the formats by this
+length, then validate the selected format. An OSDP 3.0 PD supports the new
+format and may also support the old format. These examples model a new-only PD.
 
 The request is A3, identifier length, identifier, element-tag length, optional tag,
 offset (uint16 little-endian), and requested length (uint16 little-endian). Tag length

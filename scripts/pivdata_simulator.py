@@ -14,6 +14,18 @@ class PIVError(ValueError):
         self.code = code
 
 
+def getdata_format(data):
+    """Classify a framed command by its disjoint data-length ranges."""
+    if not data or data[0] != 0xA3:
+        raise PIVError(0x0005, "not a GET DATA command")
+    size = len(data) - 1
+    if size == 5:
+        return "2.2"
+    if 7 <= size <= 12:
+        return "3.0"
+    raise PIVError(0x0005, "invalid GET DATA length")
+
+
 def valid_tag(tag):
     """A complete one-to-three-octet BER tag, without padding."""
     if not 1 <= len(tag) <= 3 or tag[0] == 0 or tag == b"\xff":
@@ -49,6 +61,8 @@ class Request:
 
     @classmethod
     def decode(cls, data):
+        if getdata_format(data) == "2.2":
+            raise PIVError(0x0005, "OSDP 2.2 format unsupported by this new-only PD")
         try:
             if data[0] != 0xA3 or not 1 <= data[1] <= 3:
                 raise ValueError
@@ -88,7 +102,7 @@ def tlv_at(data, start=0):
             raise ValueError
         return tag, pos, end
     except (IndexError, ValueError) as exc:
-        raise PIVError(0x102A, "malformed BER-TLV") from exc
+        raise PIVError(0x1028, "malformed BER-TLV") from exc
 
 
 def select_response(request, response):
@@ -103,28 +117,28 @@ def select_response(request, response):
     else:
         _, begin, end = tlv_at(response)
         if end != len(response):
-            raise PIVError(0x102A, "trailing bytes")
+            raise PIVError(0x1028, "trailing bytes")
         selected = response
         if request.tag:
             matches = []
             while begin < end:
                 tag, value, stop = tlv_at(response, begin)
                 if stop > end:
-                    raise PIVError(0x102A, "child exceeds container")
+                    raise PIVError(0x1028, "child exceeds container")
                 if tag == request.tag:
                     matches.append(response[begin:stop])
                 begin = stop
             if not matches:
                 raise PIVError(0x1024, "missing child")
             if len(matches) != 1:
-                raise PIVError(0x1029, "ambiguous child")
+                raise PIVError(0x1027, "ambiguous child")
             selected = matches[0]
     if request.offset > len(selected):
         raise PIVError(0x0005, "offset beyond selected data")
     remaining = len(selected) - request.offset
     count = remaining if request.requested == 0 else min(request.requested, remaining)
     if count > 65535:
-        raise PIVError(0x102B, "selected transfer exceeds multipart capacity")
+        raise PIVError(0x1029, "selected transfer exceeds multipart capacity")
     return selected[request.offset:request.offset + count]
 
 
@@ -272,9 +286,10 @@ class Controller:
             if (count != len(payload) - 7 or count > FRAGMENT_BYTES
                     or (self.total is not None and total != self.total)):
                 raise ValueError("invalid multipart lengths")
-            if self.total is not None and count == 0 and offset >= total and offset != len(self.data):
+            if total != 0 and count == 0 and offset >= total:
                 self.done = True
                 self.error = "multipart-terminated"
+                self.data.clear()
             else:
                 if offset != len(self.data) or offset + count > total:
                     raise ValueError("noncontiguous multipart reply")

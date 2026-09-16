@@ -1,10 +1,10 @@
 \begin{PacketTable}{Get PIV Data (osdp\_PIVGETDATA)}
   \label{tab:pivdata}
-  \PacketRow{1}{CMND}{Command identifier.}{0xA3}
-  \PacketRow{1}{Identifier Length}{Number of bytes in Object Identifier.}{0x01-0x03}
-  \PacketRow{1-3}{Object Identifier}{Complete BER tag identifying the card data object. Native byte order; no leading padding.}{BER tag}
-  \PacketRow{1}{Tag Length}{Number of bytes in Element Tag. Zero selects the complete object and omits Element Tag.}{0x00-0x03}
-  \PacketRow{0-3}{Element Tag}{Complete BER tag of a unique direct child of the object's outer container.}{BER tag}
-  \PacketRow{2}{Offset}{Starting byte within the selected object or element. Zero identifies its first tag byte. Least-significant byte first.}{0x0000-0xFFFF}
-  \PacketRow{2}{Requested Length}{Maximum bytes to return, least-significant byte first. Zero requests all remaining bytes.}{0x0000-0xFFFF}
+  \PacketRow{0x01}{CMND}{Command identifier.}{0xA3}
+  \PacketRow{0x01}{Identifier Length}{Number of bytes in Object Identifier.}{0x01-0x03}
+  \PacketRow{0x01-0x03}{Object Identifier}{Complete BER tag identifying the credential data object. Native byte order; no leading padding.}{BER tag}
+  \PacketRow{0x01}{Tag Length}{Number of bytes in Element Tag. Zero selects the complete object and omits Element Tag.}{0x00-0x03}
+  \PacketRow{0x00-0x03}{Element Tag}{Complete BER tag of a unique direct child of the object's outer container.}{BER tag}
+  \PacketRow{0x02}{Offset}{Starting byte within the selected object or element. Zero identifies its first tag byte. Least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0x02}{Requested Length}{Maximum bytes to return, least-significant byte first. Zero requests all remaining bytes.}{0x0000-0xFFFF}
 \end{PacketTable}

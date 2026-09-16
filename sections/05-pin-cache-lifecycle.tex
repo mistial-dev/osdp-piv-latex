@@ -1,0 +1,60 @@
+\paragraph{PIN cache expiration}
+\label{sec:pin-cache-expiration}
+The PIN cache holds a PIN in the PD for later verification by a credential.
+The PD sends the PIN to the credential in a VERIFY command. Successful
+verification allows operations that require the PIN, subject to the
+credential's access rules.
+
+Cache Validity limits how long the PD stores the PIN for reuse. When the cache
+expires, the PD erases the stored PIN. A credential that has already accepted
+the PIN remains PIN verified until the credential's rules clear that state.
+Mode \code{0x00} reports both whether the PD has a usable cached PIN and
+whether the current credential has accepted PIN verification
+(Table~\ref{tab:pivsper-status}).
+
+\textbf{Starting and expiring the cache.}
+The PD \textbf{SHALL} start the cache timer when PIN acquisition completes
+successfully, using elapsed time unaffected by clock adjustments. Delivery of
+the completion reply, status queries, and verification leave the deadline
+unchanged. A new successful acquisition starts a new deadline. At expiration,
+the PD \textbf{SHALL} erase the cached PIN and mark the cache unavailable.
+
+\textbf{Expiration before VERIFY.}
+Immediately before submitting VERIFY to the credential transport,
+the PD \textbf{SHALL} check the cache deadline. If the deadline has been
+reached, the PD \textbf{SHALL} send no VERIFY and return
+\texttt{osdp\_PIVSPER} \code{0x0A} (no cached PIN). The PD \textbf{SHALL}
+make the deadline check and submission decision as one indivisible step.
+At the deadline, the PIN is expired and the PD \textbf{SHALL NOT} submit VERIFY.
+
+\textbf{Expiration after VERIFY.}
+Once VERIFY has been submitted, the PD \textbf{SHALL} finish the exchange even
+if the cache expires. The PD reports the credential's verification result,
+\code{0x0B} (credential communication failed or timed out), or
+\code{0x04} (credential removed), as applicable.
+The PD may retain a command copy needed to finish
+the exchange under the credential transport rules and \textbf{SHALL} erase
+that copy when the exchange ends. Each new VERIFY requires a new ACU request.
+
+\textbf{VERIFY without a confirmed result.}
+If communication fails after VERIFY submission, the PD cannot determine
+whether the credential accepted the PIN. The PD \textbf{SHALL} clear its
+reported PIN-verification state and cached PIN, end any SM session, and require
+credential preparation to be restarted before another data or authentication
+operation. Restarting preparation restores a known security context after an
+exchange whose outcome is unknown. A verified credential reply determines the reported result even if delivery
+to the ACU is delayed.
+
+\textbf{Reporting expiration to the ACU.}
+While idle, the PD erases an expired cached PIN without sending a reply.
+The ACU learns the current
+state from a status query or the result of a later verification request.
+If Auto Execute is waiting for credential presentation, expiration
+\textbf{SHALL} end that request with \code{0x0A} on a later poll.
+An accepted verification request receives ACK followed by one terminal
+PIVSPER, unless the ACU cancels the request. Expiration after the operation
+finishes leaves its pending completion reply unchanged.
+
+Figure~\ref{fig:pin-cache-expiration} shows how expiration affects VERIFY.
+Appendix~\ref{ex:pin-expiration} provides packet and timing examples.
+\input{figures/pin-cache-expiration}

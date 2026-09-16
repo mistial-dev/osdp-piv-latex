@@ -1,4 +1,4 @@
 \begin{PacketTable}{Card Status Request (osdp\_CARDSTATUS)}
-  \PacketRow{1}{CMND}{Command identifier.}{0xA9 (tentative)}
-  \PacketRow{1}{Status Type}{Requested status record. \code{0x01} selects the standard PIV card status profile. Values \code{0x02}-\code{0x7F} are reserved and shall elicit \code{osdp_PIVERROR}. Values \code{0x80}-\code{0xFF} are reserved for private use.}{0x00-0xFF}
+  \PacketRow{0x01}{CMND}{Command identifier.}{0xA9 (tentative)}
+  \PacketRow{0x01}{Status Type}{\code{0x01}: standard PIV credential status. \code{0x02}: SM diagnostic record. Values \code{0x00} and \code{0x03}-\code{0x7F} are reserved and return \code{osdp_PIVERROR} \code{0x0005} (invalid parameter). Values \code{0x80}-\code{0xFF} are reserved for private use.}{0x00-0xFF}
 \end{PacketTable}

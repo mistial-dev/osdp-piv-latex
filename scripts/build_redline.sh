@@ -51,6 +51,10 @@ python3 scripts/expand_redline_rows.py "$redline_dir/base.tex" "$redline_dir/cur
 python3 scripts/expand_redline_rows.py --clean-column-specs \
   "$redline_dir/osdp-piv-proposal-redline.tex"
 
+# Permit line breaks where adjacent deleted and added identifiers fill a cell.
+perl -0pi -e 's/\\DIFdelend \\DIFaddbegin/\\DIFdelend \\allowbreak\\DIFaddbegin/g; s@/\\DIFdelbegin@/\\allowbreak\\DIFdelbegin@g' \
+  "$redline_dir/osdp-piv-proposal-redline.tex"
+
 perl -0pi -e \
   's/\\date\{\\today\}/\\date\{Redline: '"$base_short"' to '"$current_short"' working tree\\\\\\today\}/' \
   "$redline_dir/osdp-piv-proposal-redline.tex"

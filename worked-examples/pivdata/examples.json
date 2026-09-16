@@ -750,7 +750,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4137,
+      "expected_error": 4135,
       "exchanges": [
         {
           "command_hex": "5301100005A3017E013000000000DC37",
@@ -758,7 +758,7 @@
         },
         {
           "command_hex": "530108000660D866",
-          "reply_hex": "53810A00068A2910FF02"
+          "reply_hex": "53810A00068A2710F021"
         }
       ]
     },
@@ -790,7 +790,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138,
+      "expected_error": 4136,
       "exchanges": [
         {
           "command_hex": "5301100005A3017E013000000000DC37",
@@ -798,7 +798,7 @@
         },
         {
           "command_hex": "530108000660D866",
-          "reply_hex": "53810A00068A2A10AC57"
+          "reply_hex": "53810A00068A2810CE31"
         }
       ]
     },
@@ -810,7 +810,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138,
+      "expected_error": 4136,
       "exchanges": [
         {
           "command_hex": "5301100005A3017E013000000000DC37",
@@ -818,7 +818,7 @@
         },
         {
           "command_hex": "530108000660D866",
-          "reply_hex": "53810A00068A2A10AC57"
+          "reply_hex": "53810A00068A2810CE31"
         }
       ]
     },
@@ -830,7 +830,7 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4138,
+      "expected_error": 4136,
       "exchanges": [
         {
           "command_hex": "5301100005A3017E013000000000DC37",
@@ -838,7 +838,7 @@
         },
         {
           "command_hex": "530108000660D866",
-          "reply_hex": "53810A00068A2A10AC57"
+          "reply_hex": "53810A00068A2810CE31"
         }
       ]
     },
@@ -870,8 +870,8 @@
         "kind": "synthetic",
         "reason": "Constructed boundary/error fixture; not a card capture."
       },
-      "expected_error": 4135,
-      "injected_error": 4135,
+      "expected_error": 4134,
+      "injected_error": 4134,
       "exchanges": [
         {
           "command_hex": "53010F0005A3017E00000000004A01",
@@ -879,7 +879,7 @@
         },
         {
           "command_hex": "530108000660D866",
-          "reply_hex": "53810A00068A2710F021"
+          "reply_hex": "53810A00068A2610C112"
         }
       ]
     },

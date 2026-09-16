@@ -1,0 +1,230 @@
+\subsection{Credential preparation and Secure Messaging}
+\label{sec:credential-sm-flow}
+
+OSDP Secure Channel protects communication between the ACU and PD.
+Credential Secure Messaging (SM) protects credential commands and replies between
+the PD and the credential. Credential SM can operate over contact or contactless.
+The Virtual Contact Interface (VCI) allows a contactless credential to perform
+operations that otherwise require contact, subject to the credential's access rules.
+When the credential requires pairing, the PD establishes SM before submitting the
+eight-digit pairing code. Pairing is the default, recommended configuration in SP~800-73-5 Part~1,
+Section~5.5. The pairing code and the cardholder's PIN serve separate purposes:
+pairing enables VCI; PIN verification authorizes PIN-protected operations.
+
+\paragraph{Credential presentation}
+The PD \textbf{SHALL} select the configured application on an interface allowed
+by \texttt{osdp\_PIVMODE}. For a PIV application, the PD \textbf{SHALL} inspect
+the SELECT response's application property template (tag \code{0x61}). Its
+cryptographic algorithm template (tag \code{0xAC}) contains algorithm identifiers
+in tag \code{0x80}. The PD \textbf{SHALL} examine all such entries. An identifier
+of \code{0x27} or \code{0x2E} advertises credential SM; SP~800-73-5 Part~2,
+Section~3.1.1, requires this indication when the PIV application supports SM.
+The PD \textbf{SHALL} distinguish a malformed response from a valid response
+that advertises neither SM algorithm.
+
+\paragraph{Discovery Object}
+The Discovery Object (\code{0x7E}) describes the credential's PIN and VCI policy.
+Its PIN Usage Policy (tag \code{0x5F2F}) identifies the supported PIN options,
+the preferred PIN when both PIN types are enabled, and whether VCI requires
+pairing. The PD uses this information to prepare PIN and VCI operations.
+SP~800-73-5 Part~1, Section~3.3.2, defines the policy bytes.
+
+The PD \textbf{SHALL} read the Discovery Object when preparing a credential-side PIN
+operation or attempting SM setup, unless the PD already holds the policy for
+the selected application on the current credential. Automatic reads \textbf{SHALL} be limited to those
+workflows. Collecting a PIN for later use requires no credential read. A status query
+reports the policy already read, or \code{0xFFFF} when unavailable. The ACU can
+also request the object explicitly with \texttt{osdp\_PIVGETDATA}.
+
+In the first policy byte, mask \code{0x08} indicates VCI support. When VCI is
+supported, mask \code{0x04} permits VCI without a pairing code; otherwise pairing
+is required. If the object is absent, VCI is unavailable. The SELECT response
+remains the source of SM capability information.
+
+\paragraph{Automatic SM preparation}
+After selecting a PIV application, the PD checks the requirements for SM setup.
+If PIVMODE flag \code{0x02} is set, the PD supports an SM algorithm advertised
+by the credential, and at least one trust anchor is loaded, the PD \textbf{SHALL}
+attempt SM setup. This applies to both contact and contactless credentials, in
+commanded mode and PIV Auto.
+
+Selecting a different application starts this check again. Selecting the same
+PIV application again preserves the current SM session and PIN-verification
+status. Reselection alone therefore requires neither new SM setup nor repeated
+PIN verification. The credential's access rules still apply to each operation. These selection
+rules follow SP~800-73-5 Part~2, Section~3.1.1.
+
+The PD's trust store contains the anchors loaded through
+\texttt{osdp\_PIVVCILOADTA}. The PD checks its own store before starting SM.
+An empty store prevents setup. If anchors are present, the PD must still find
+one that can validate this credential's certificate, directly or through an
+intermediate certificate. Loading an anchor makes it available for the next
+attempt. To start a new attempt with a credential already present, the ACU reapplies
+PIVMODE; the mode-change clearing rules apply.
+
+The credential returns its SM card-verifiable certificate (CVC) during key
+establishment. The PD \textbf{SHALL} validate that certificate using a loaded
+anchor, directly or through an intermediate CVC, and verify the authentication
+cryptogram as specified in
+SP~800-73-5 Part~2, Section~4.1. The PD \textbf{SHALL} report SM as established
+only after those checks succeed.
+
+\paragraph{Proceeding without SM}
+When SM is disabled, unsupported, or unavailable because a trust anchor is
+missing, the PD \textbf{SHALL} check whether the operation requested by the
+ACU or configured in PIV Auto requires SM. If SM is required, the PD
+\textbf{SHALL} terminate the operation without sending the operation's command
+to the credential and return the defined failure reply. Otherwise,
+the PD \textbf{SHALL} perform the requested operation under the credential's access
+rules. The PD \textbf{SHALL NOT} substitute another key, algorithm, interface,
+or operation to avoid an SM requirement.
+
+PIV key \code{0x9A} requires PIN verification or a supported biometric
+comparison within the credential, as specified in SP~800-73-5 Part~1,
+Section~5.1, Table~5. The PIN-based contactless PIV Auto workflow with key \code{0x9A}
+therefore requires SM, VCI, and successful PIN verification. The PD
+\textbf{SHALL} check those requirements in that order before sending the
+authentication command. Missing PIN verification returns Result \code{0x05},
+Detail \code{0x02} (PIN verification required).
+If SM is unavailable, the PD reports \texttt{osdp\_PIVSTATUS} Result
+\code{0x02} (SM failure) with the applicable detail code. PIV Auto with key
+\code{0x9E} can continue without SM and reports the credential-authentication result.
+A commanded PIN verification over contact can also proceed without SM.
+
+The PD may start key establishment before discovering that the required
+trust anchor is missing. In that case, the PD \textbf{SHALL} discard any
+session keys derived during setup. The PD then handles the requested operation
+using the rules above.
+
+In commanded mode, the ACU obtains the preparation result with
+\texttt{osdp\_CARDSTATUS}. The PD reports the established SM and VCI state in
+\texttt{osdp\_CARDSTATUSR}. A missing anchor leaves permitted data reads
+available. For example, the ACU can use \texttt{osdp\_PIVGETDATA} to read the
+Secure Messaging Certificate Signer object (\code{0x5FC122}) and inspect the
+signer certificate and any intermediate CVC. The credential's own SM CVC is returned
+during key establishment; that CVC is separate from the signer data object.
+The ACU can request \texttt{osdp\_CARDSTATUS} Status Type \code{0x02} to obtain
+the setup outcome and the hash of the CVC received during that attempt, including when
+setup failed.
+
+\paragraph{Failed security checks}
+A missing or invalid credential CVC, invalid authentication cryptogram, or
+failure to verify an SM reply \textbf{SHALL} end the current operation with a
+failure result. The PD
+\textbf{SHALL} block further data access and authentication commands until the
+credential is removed, a different application is successfully selected, or
+PIVMODE is reapplied. PIVSELECT remains available to select a different
+application; selecting the same application preserves the blocked state.
+This prevents continued use of a session that failed its security checks.
+The rule also applies when automatic SM setup fails before an ACU command
+arrives. PIVMODE, trust-store management, and SM diagnostic requests remain available.
+For a standard status request (Status Type \code{0x01}), the PD terminates the
+request without sending further commands or data to the credential and returns
+\texttt{osdp\_PIVERROR} \code{0x1023} (credential security conditions not
+satisfied). This distinguishes a blocked credential from operation without SM.
+
+For blocked operations, the PD reports \texttt{osdp\_PIVSPER} \code{0x08}
+(security condition not met) for SPE, or \texttt{osdp\_PIVERROR} \code{0x1023}
+(credential security conditions not satisfied) for commands that use PIVERROR.
+
+If an operation requires SM, VCI, or PIN verification and that requirement is
+unmet, the PD \textbf{SHALL} report failure in the operation's completion reply.
+PIV Auto uses \texttt{osdp\_PIVSTATUS}; SPE uses \texttt{osdp\_PIVSPER}.
+
+Figure~\ref{fig:sm-preparation} summarizes credential preparation and the
+decision to proceed with the requested operation.
+\input{figures/sm-vci-preparation}
+
+\paragraph{Contactless operation}
+When pairing is required, the ACU sends \code{osdp_PIVXMITPAIRING}
+after SM is established. The PD submits the pairing
+code to the credential through SM. A successful verification enables VCI. For a credential
+whose Discovery Object permits VCI without pairing, establishing SM also
+enables VCI.
+PIN verification over contactless requires VCI. Biometric comparison within the credential
+and pairing-code submission can use
+contactless SM without VCI, subject to the credential's access rules.
+SM and VCI preserve the credential's operation-specific restrictions, including the
+contact-interface restriction on ordinary PIV PUT DATA.
+
+\paragraph{Protected credential commands}
+When credential SM is established, the PD \textbf{SHALL} use that SM session
+to protect PIV commands that support SM. The PD \textbf{SHALL} verify and
+unwrap each protected reply before interpreting the credential data or status.
+These requirements apply to data access, authentication,
+PIN verification, and biometric operations. The PD \textbf{SHALL} follow
+SP~800-73-5 Part~2, Section~4.2, for encryption, MACs, counters, and credential-command
+and response chaining. The PD's GET RESPONSE exchanges follow that
+section's chaining rules.
+
+The PD \textbf{SHALL} discard the SM session keys on credential reset, an SM
+error, or replacement by newly established session keys, as specified in
+SP~800-73-5 Part~2, Section~4.3. This requirement applies to the outer SW
+processing status defined in Section~4.2.7. The protected command status in
+tag \code{0x99} reports the result of the credential operation separately.
+When SM ends, the PD \textbf{SHALL}
+clear dependent VCI and PIN-verification status and apply the PIN-cache
+clearing rules.
+
+A verified protected reply reporting a credential rejection \textbf{SHALL}
+end the requested operation with that failure while preserving SM. The PD
+\textbf{SHALL} update verification status according to the credential's
+response. An incorrect PIN (\code{0x63Cx}) clears PIN-verification status
+and the cached PIN; established pairing and VCI remain available. An incorrect
+pairing code (\code{0x6300}) clears pairing verification, making VCI unavailable
+when pairing is required. These credential rules are defined in SP~800-73-5
+Part~2, Sections~3.2.1.1 and~3.2.1.3. The SM diagnostic outcome remains
+unchanged. A failed certificate, cryptogram, or protected-reply check follows
+the blocked-state rules above.
+
+After an authenticated PIN rejection, the ACU can query remaining attempts
+with PIVSPE Mode \code{0x06}, acquire a corrected PIN, and request verification
+again. After a pairing rejection, the ACU can submit a corrected pairing code.
+Neither retry requires a new SM session.
+
+After an SM failure, the ACU \textbf{SHALL} reapply PIVMODE
+to start a new SM attempt before retrying a protected operation.
+For a commanded retry, the ACU disables PIV Auto
+in that configuration, waits for SM establishment, supplies any required
+pairing code, and requests PIN acquisition and verification again. The PD
+\textbf{SHALL NOT} retry VERIFY automatically.
+Figures~\ref{fig:sm-pin-rejection} and~\ref{fig:sm-pairing-rejection} show
+the ACU and PD exchanges after authenticated rejection.
+Figure~\ref{fig:sm-error-recovery} shows recovery after SM failure.
+The PD \textbf{SHALL} keep a completed operation's reply until it is delivered
+or canceled.
+
+\input{figures/sm-pin-rejection}
+\input{figures/sm-pairing-rejection}
+\input{figures/sm-error-recovery}
+
+\paragraph{Commanded PIN verification}
+For a PIN entered before credential presentation, the ACU first requests Mode
+\code{0x04} (acquire and cache) and waits for completion. After credential presentation,
+the PD prepares the credential. The ACU checks credential status and supplies any required
+pairing code before requesting cached-PIN verification.
+Figure~\ref{fig:sm-commanded-sequence} shows a successful contactless workflow
+with SM enabled, a suitable trust anchor loaded, and PIV Auto disabled.
+The ACU obtains the pairing code during enrollment or through another
+deployment-defined process. On contact, pairing is omitted
+and Mode \code{0x03} uses the selected contact interface, with SM when established.
+
+\input{figures/sm-vci-commanded-sequence}
+
+\paragraph{ACU recovery after a PIV Auto failure}
+PIV Auto reports one result for the configured authentication attempt. The ACU
+can then request SM diagnostics, correct missing trust material, or choose
+another authentication workflow. Loading an anchor makes that anchor available
+to the PD. Reapplying PIVMODE starts a new automatic attempt and clears the
+previous PIN and SM state. The ACU \textbf{SHALL} finish trust recovery before
+pairing and PIN verification that depend on the new SM session.
+
+When SM is established but the configured authentication requires unsupported
+VCI, the PD \textbf{SHALL} terminate the attempt and report
+\texttt{osdp\_PIVSTATUS} Result \code{0x05}, Detail \code{0x03} (required VCI
+unsupported). The PD sends no authentication command for that attempt.
+Missing SM support is reported as Result \code{0x02}, Detail \code{0x05}
+(required SM unsupported). A trust-anchor update cannot add either capability.
+The ACU must select a supported workflow or reject the transaction.
+Appendix~\ref{ex:sm-recovery} shows trust recovery followed by commanded
+pairing, PIN verification, and authentication.

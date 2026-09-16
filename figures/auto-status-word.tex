@@ -1,0 +1,28 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily,
+  record/.style={draw=OSDPBlue,fill=OSDPLightGray,text width=12cm,align=center,inner sep=9pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[record] (logical) {\textbf{Complete logical reply: 0x0039 bytes}\\[3pt]
+0x0037 fixed bytes, including Signed Response Length = 0\\
+followed by Status Word: \texttt{69 82}};
+\node[record,anchor=north] (first) at ([yshift=-0.65cm]logical.south)
+{\textbf{First POLL: PIVSTATUS fragment}\\[3pt]
+Total 0x0039; offset 0x0000; size 0x0038\\
+Fixed fields and SW1 (\texttt{69})};
+\node[record,anchor=north] (second) at ([yshift=-0.5cm]first.south)
+{\textbf{Next POLL: PIVSTATUS fragment}\\[3pt]
+Total 0x0039; offset 0x0038; size 0x0001\\
+SW2 (\texttt{82})};
+\node[record,anchor=north] (decode) at ([yshift=-0.65cm]second.south)
+{\textbf{ACU reassembles, then interprets}\\[3pt]
+Result 0x06: credential authentication command failed\\
+Status 0x6982: credential security status not satisfied};
+\draw[flow] (logical.south) -- (first.north);
+\draw[flow] (first.south) -- (second.north);
+\draw[flow] (second.south) -- (decode.north);
+\end{tikzpicture}
+\caption{OSDP 3.0 multipart fields describe the entire logical reply.
+A fragment boundary can fall between SW1 and SW2.}
+\label{fig:auto-status-word}
+\end{figure}

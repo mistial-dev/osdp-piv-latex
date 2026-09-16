@@ -1,0 +1,50 @@
+\paragraph{SM diagnostics (Status Type 0x02)}
+\label{sec:sm-diagnostics}
+The ACU uses this status type to determine why SM setup failed and identify
+the CVC received by the PD. The PD \textbf{SHALL} accept this request
+while credential operations are blocked by a failed security check. The PD
+\textbf{SHALL} return the most recent setup outcome and the CVC hash for
+the current credential and selected application. This request reads retained
+PD information; the PD \textbf{SHALL NOT} send a command to the credential
+in response to the diagnostic request.
+
+The PD acknowledges the request with \texttt{osdp\_ACK}, then returns
+\texttt{osdp\_CARDSTATUSR} on subsequent polls. Status Type \code{0x02} uses
+the OSDP~3.0 multi-part format in Table~\ref{tab:sm-diagnostic}.
+Every diagnostic fragment \textbf{SHALL} contain Status Type \code{0x02}
+immediately after the reply code, followed by MpSizeTotal, MpOffset, and
+MpFragmentSize. Status Type identifies the layout before the ACU reads the
+multi-part fields. The repeated Status Type byte is outside the diagnostic
+record and \textbf{SHALL NOT} be counted in the multi-part lengths or offsets.
+
+\input{tables/osdp-sm-diagnostic}
+
+The diagnostic record consists of Outcome, Detail, CVC Hash Present, and
+CVC Hash, in that order. The PD \textbf{SHALL} assemble the complete record before
+dividing the record into reply fragments. The multi-part fields describe
+that complete record. A fragment may end within any field. The ACU
+\textbf{SHALL} reassemble the record before interpreting the fields.
+
+The PD \textbf{SHALL} compute and retain the hash of a complete received CVC
+even when certificate or cryptogram validation fails. The hash identifies the
+received bytes; the hash provides no evidence that the CVC is trusted.
+The diagnostic record requires only the outcome, detail, presence flag, and
+32-byte hash. The PD has no obligation to retain the CVC or other credential
+objects for later retrieval. PIVGETDATA reads the requested object from the
+credential through the active interface.
+If no complete CVC was received, the PD \textbf{SHALL} set CVC Hash Present
+to zero, fill CVC Hash with zero bytes, and report the applicable reason.
+
+The PD \textbf{SHALL} keep the diagnostic record until credential removal or
+reset, PD reset, successful selection of a different application, or reapplication of
+PIVMODE. A later SM failure updates Outcome and Detail while
+retaining the CVC hash from that session. Loading a trust anchor leaves the previous
+outcome unchanged. Before a setup attempt, the record has Outcome \code{0x00},
+Detail \code{0x00}, CVC Hash Present zero, and an all-zero CVC Hash.
+
+The ACU \textbf{SHALL} receive any pending PIV Auto result before requesting
+diagnostics. While a diagnostic reply is pending, the ACU sends only POLL
+or ABORT. A competing request receives \texttt{osdp\_NAK} \code{0x09}
+(unable to process command). ABORT cancels the transfer with ACK. Credential
+removal during transfer terminates the transfer with \texttt{osdp\_PIVERROR}
+\code{0x1026} (credential absent or removed); the ACU discards any partial record.

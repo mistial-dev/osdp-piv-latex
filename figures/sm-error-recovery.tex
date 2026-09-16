@@ -1,0 +1,34 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily,
+  panel/.style={draw=OSDPBlue,rounded corners=3pt,fill=OSDPLightGray,
+    text width=12cm,align=left,inner sep=9pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[panel] (failure) {\textbf{Input: SM failure or an unconfirmed VERIFY exchange}\\[3pt]
+Clear dependent VCI, PIN-verification, and cached-PIN state. Report failure once.
+Block credential data and authentication commands. Diagnostics and recovery
+controls remain available. An unconfirmed PIN VERIFY returns PIVSPER 0x0B
+(credential communication failed or timed out). A pairing VERIFY timeout
+returns PIVERROR 0x0002 (smart-card timeout). Both require preparation to restart.};
+\node[panel,anchor=north] (diagnostic) at ([yshift=-0.5cm]failure.south)
+{\textbf{Output to the ACU: failed operation and diagnostics}\\[3pt]
+ACU sends POLL; PD returns the operation's failure reply.
+ACU then sends CARDSTATUS Type 0x02; PD acknowledges and returns
+CARDSTATUSR Type 0x02 fragments with the SM outcome and CVC hash on later polls.};
+\node[panel,anchor=north] (restart) at ([yshift=-0.5cm]diagnostic.south)
+{\textbf{New input from the ACU: restart preparation}\\[3pt]
+ACU corrects the cause and reapplies PIVMODE with SM enabled and PIV Auto
+disabled. PD starts SM setup. ACU requests CARDSTATUS Type 0x01 and polls
+for CARDSTATUSR Type 0x01 to learn whether SM was established.};
+\node[panel,anchor=north] (retry) at ([yshift=-0.5cm]restart.south)
+{\textbf{Resume the requested operation}\\[3pt]
+After SM succeeds, supply a pairing code when required. Acquire and verify a
+PIN if the operation requires one. Each VERIFY requires a new ACU request.};
+\draw[flow] (failure.south) -- (diagnostic.north);
+\draw[flow] (diagnostic.south) -- (restart.north);
+\draw[flow] (restart.south) -- (retry.north);
+\end{tikzpicture}
+\caption{Recovery after SM failure or an unconfirmed VERIFY. The ACU receives
+the failed operation's result before requesting diagnostics and restarting preparation.}
+\label{fig:sm-error-recovery}
+\end{figure}

@@ -2,13 +2,18 @@
   \label{tab:pivstatusr-results}
   \ValueDescriptionRow{0x00}{Success. \emph{Detail} is \code{0x00}, UUID is nonzero, and Signed Response carries the complete returned Dynamic Authentication Template.}
   \ValueDescriptionRow{0x01}{Credential not present or removed before PIV Auto completed.}
-  \ValueDescriptionRow{0x02}{VCI establishment or required VCI validation failed.}
+  \ValueDescriptionRow{0x02}{Credential SM unavailable or failed. Detail: \code{0x01} trust store empty; \code{0x02} no matching trust path; \code{0x03} missing or invalid CVC; \code{0x04} invalid authentication cryptogram; \code{0x05} required SM unsupported; \code{0x06} other SM processing failure; \code{0x07} required SM disabled. Detail assignments are tentative.}
   \ValueDescriptionRow{0x03}{Required credential data object, FASC-N, UUID, key, or certificate evidence is unavailable.}
   \ValueDescriptionRow{0x04}{Requested PIV key reference or algorithm is not supported for PIV Auto.}
-  \ValueDescriptionRow{0x05}{Credential security status is not satisfied, including missing PIN or pairing preconditions.}
-  \ValueDescriptionRow{0x06}{Credential GENERAL AUTHENTICATE operation failed; \emph{Detail} may carry SW1\textbar SW2 when available.}
+  \ValueDescriptionRow{0x05}{Required credential security condition is absent. Detail: \code{0x01} pairing code required; \code{0x02} PIN verification required; \code{0x03} required VCI unsupported; \code{0x00} other unmet condition. Detail assignments are tentative.}
+  \ValueDescriptionRow{0x06}{Credential GENERAL AUTHENTICATE operation failed. Detail is \code{0x00}; the Status Word field carries the credential failure status when available under the rules below.}
   \ValueDescriptionRow{0x07}{Signed response verification failed.}
   \ValueDescriptionRow{0x08}{Timeout or PD internal failure before a definitive credential result was available.}
   \ValueDescriptionRow{0x09-0x7F}{Reserved for future standard result codes.}
   \ValueDescriptionRow{0x80-0xFF}{Private use.}
 \end{ValueDescriptionTable}
+
+For Result \code{0x02}, Details \code{0x03}, \code{0x04}, and \code{0x06}
+block further credential operations until the context is restarted, as specified
+in Subsection~\ref{sec:credential-sm-flow}. Details \code{0x01}, \code{0x02},
+\code{0x05}, and \code{0x07} leave operations permitted without SM available.

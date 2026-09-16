@@ -1,0 +1,39 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily,
+  panel/.style={draw=OSDPBlue,rounded corners=3pt,fill=OSDPLightGray,
+    text width=12cm,align=left,inner sep=9pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[panel] (acquire) {\textbf{1. Complete PIN acquisition}\\[3pt]
+Start the cache timer. Report acquisition completion on a poll.
+Queries and successful verification leave the deadline unchanged.\\[3pt]
+\textbf{Expiration while idle:} erase the PIN; send no unsolicited reply.\\
+\textbf{Expiration while waiting for presentation:} erase the PIN;
+return PIVSPER 0x0A (no cached PIN) on a poll.};
+\node[panel,anchor=north] (check) at ([yshift=-0.5cm]acquire.south)
+{\textbf{2. Check immediately before submitting VERIFY}\\[3pt]
+Has the cache deadline been reached?};
+\node[panel,text width=5.3cm,anchor=north] (expired) at ([xshift=-3.3cm,yshift=-1cm]check.south)
+{\textbf{Deadline reached}\\[3pt]
+Clear the cache. Send no VERIFY. Return PIVSPER 0x0A (no cached PIN) on a poll.};
+\node[panel,text width=5.3cm,anchor=north] (finish) at ([xshift=3.3cm,yshift=-1cm]check.south)
+{\textbf{3. Finish a submitted exchange}\\[3pt]
+Before the deadline, submit VERIFY once. Expiration clears the stored PIN while the exchange finishes.
+Return the credential result, or the applicable timeout or removal failure.
+Erase the PIN copy used for the command when the exchange ends.};
+\node[panel,anchor=north] (state) at ([xshift=-3.3cm,yshift=-0.7cm]finish.south)
+{\textbf{4. Report cache and verification status}\\[3pt]
+Mode 0x00 reports whether the PD has a cached PIN and whether the
+credential has accepted PIN verification.
+The cache can be empty while the credential remains PIN verified.};
+\draw[flow] (acquire.south) -- (check.north);
+\draw[flow] (check.south) -- ++(0,-0.5) -| node[pos=0.75,left,font=\small]{Yes} (expired.north);
+\draw[flow] (check.south) -- ++(0,-0.5) -| node[pos=0.75,right,font=\small]{No} (finish.north);
+\draw[flow] (finish.south) -- ++(0,-0.35) -| (state.north);
+\draw[flow] (expired.south) |- ([yshift=0.35cm]state.north) -- (state.north);
+\end{tikzpicture}
+\caption{PIN cache lifetime and the VERIFY submission boundary. Idle expiration
+is silent. Expiration while waiting for presentation ends the pending request
+with PIVSPER 0x0A on a poll.}
+\label{fig:pin-cache-expiration}
+\end{figure}

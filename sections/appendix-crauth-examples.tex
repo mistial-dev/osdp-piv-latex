@@ -1,0 +1,20 @@
+\clearpage
+\section{CRAUTH Worked Examples (Informative)}\label{app:crauth-examples}
+
+This example sends a captured P-256 challenge to key \code{0x9E} and returns
+the captured signature template. The first command fragment contains only
+Format Marker \code{0xFF}. The second contains Algorithm \code{0x11},
+Reference Identifier \code{0x9E}, and the \code{0x20}-byte challenge.
+The complete request record is \code{0x0023} bytes. The PD removes the
+marker and uses the algorithm, key reference, and challenge to construct
+\code{GENERAL AUTHENTICATE}.
+
+The credential data comes from the existing contactless card04 SM capture.
+Credential SM is assumed established as in that capture; the example shows
+the plaintext at the PD's SM boundary. The packets omit OSDP Secure Channel
+for clarity. The two failure cases are modeled to show terminal error handling.
+Full exchanges and source references are in
+\href{run:worked-examples/crauth/examples.json}{the CRAUTH example file}.
+The command and reply codes remain \code{0xA5} and \code{0x82}.
+
+\input{tables/crauth-worked-examples}

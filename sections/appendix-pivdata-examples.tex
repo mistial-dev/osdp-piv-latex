@@ -1,12 +1,48 @@
-\section{Sample \texttt{osdp\_PIVDATA} Requests (Informative)}
+\section{PIVGETDATA Worked Examples (Informative)}
 \label{app:pivdata-examples}
 
-This appendix illustrates representative requests that conforming ACUs may issue using the clarified \texttt{osdp\_PIVDATA} command. Object identifiers align with NIST SP~800-73-4 Part~2, Table~6. Each example shows the bytes that appear in the OSDP payload after the \texttt{CMND} field; the PD strips leading zeroes before constructing the ISO~7816-4 APDU.
+These examples show the enhanced request defined in
+Section~\ref{sec:pivdata}, the OSDP~3.0 multi-part response defined in
+Section~\ref{sec:pivdatar}, and the error reply defined in
+Section~\ref{sec:piverror}.
 
-\begin{description}
-  \item[Cardholder Unique Identifier (CHUID)] Object identifier \code{0x5FC102}, tag \code{0x00}, offset \code{0x0000}. The PD transmits \texttt{GET DATA} for tag \code{0x5FC102} and returns the complete CHUID BER-TLV so the ACU can validate the FASC-N, GUID, and expiration fields.
-  \item[Card Capability Container (CCC)] Object identifier \code{0x5FC107}, tag \code{0x00}, offset \code{0x0000}. Use this request during device discovery to read feature flags (contact/contactless support, optional biometrics) prior to issuing PIV Mode updates.
-  \item[Discovery Object] Object identifier \code{0x00007E}, tag \code{0x00}, offset \code{0x0000}. The PD forwards tag \code{0x7E} with its nested data so the ACU can parse the application identifier (tag \code{0x4F}) and PIN Usage Policy (tag \code{0x5F2F}). To retrieve only the AID, repeat the command with tag \code{0x4F}.
-  \item[Biometric Information Templates (BIT) Group Template] Object identifier \code{0x007F61}, tag \code{0x00}, offset \code{0x0000}. Large responses for fingerprint or iris templates require multiple \texttt{osdp\_PIVDATAR} fragments; the \texttt{MpSizeTotal}/\texttt{MpOffset}/\texttt{MpFragmentSize} fields support reconstruction.
-  \item[Selective Tag Retrieval] Object identifier \code{0x00007E}, tag \code{0x4F}, offset \code{0x0000}. The PD returns the complete PIV Application Identifier BER-TLV nested inside the Discovery Object, including tag \code{0x4F}, length, and value. Tags that occupy more than one byte (for example \code{0x7F61}) are outside the scope of this selector and must be obtained by requesting tag \code{0x00}.
-\end{description}
+The ACU and PD are simulated. Credential data comes from the identified
+existing card captures; constructed error cases are identified separately.
+These examples omit OSDP Secure Channel for clarity. CRC detects
+transmission errors. The exchanges provide neither authentication nor
+confidentiality. Some source captures used credential-side secure messaging;
+the examples use the data recovered after that processing.
+
+The files under \path{worked-examples/pivdata/} contain the complete frame
+exchanges, expected results, source hashes, and validation instructions.
+Each example ID also appears in the data file, so the printed example can be
+matched to its complete exchange. Long responses are shortened in this appendix only.
+
+\subsection{Reading the exchanges}
+Field values use hexadecimal with a \texttt{0x} prefix. Packet dumps use
+space-separated hexadecimal byte pairs under \emph{Packet bytes (hex)}.
+Two-byte field values are shown as numbers in the request table and in
+least-significant-byte-first order in the packet bytes.
+
+An accepted PIVGETDATA command receives ACK. The ACU then sends POLL until the
+PD returns a data fragment or PIVERROR. The first data fragment has offset zero,
+even when Offset in the command is nonzero. Further polls retrieve the rest
+of the data in order, until the ACU has received the advertised total.
+Polls during processing receive ACK. The examples use a maximum frame size
+of \code{0x0080} bytes, including header and CRC; this leaves \code{0x0072} data bytes per
+PIVGETDATAR fragment when no security block is present.
+
+A whole-object read includes the object's outer tag, length, and value.
+An inner-tag read includes the selected element's tag, length, and value,
+and excludes the enclosing object's tag and length. Offset and Requested Length
+then determine which bytes to return. Offset zero starts at the selected tag;
+skipping its tag and length returns only value bytes.
+
+The PD divides the requested data across replies. Each TLV header occurs once
+in the reassembled data. Each reply has its own OSDP framing, reply identifier,
+and multi-part fields; the ACU joins only the Card Data bytes.
+Certificate and biometric values retain their original encoding.
+Selecting the FASC-N and UUID elements individually allows the ACU to read them
+regardless of their positions within the CHUID.
+
+\input{tables/pivdata-worked-examples}

@@ -1,8 +1,10 @@
-\begin{PacketTable}{Get PIV Data (osdp\_PIVDATA)}
-  \PacketRow{1}{CMND}{Command identifier.}{0xA3}
-  \PacketRow{3}{PIV Object Identifier}{Three-byte identifier of the PIV data object per SP~800-73-4, encoded MSB first. Leading zero bytes SHALL be supplied by the ACU when the identifier is shorter than three bytes; the PD SHALL drop those pad bytes before issuing the APDU.}{0x00-0xFF\textsuperscript{1}}
-  \PacketRow{1}{PIV Tag}{Single-byte ASN.1 DER tag of a root-level element. Tag value \code{0x00} selects the entire object; non-zero tags select a root-level element and require the PD to strip the outer \code{0x53}/\code{0x73} wrapper, verify the length, and return only the tagged value. Multi-byte tags are not directly addressable and SHALL be retrieved by requesting tag \code{0x00}.}{0x00; or 0x01-0xFF}
-  \PacketRow{1-2}{Data Offset}{Byte offset within the requested content. Single-byte and two-byte encodings SHALL be accepted; the PD determines the format from the packet length.}{0x00-0xFFFF}
+\begin{PacketTable}{Get PIV Data (osdp\_PIVGETDATA)}
+  \label{tab:pivdata}
+  \PacketRow{0x01}{CMND}{Command identifier.}{0xA3}
+  \PacketRow{0x01}{Identifier Length}{Number of bytes in Object Identifier.}{0x01-0x03}
+  \PacketRow{0x01-0x03}{Object Identifier}{Complete BER tag identifying the credential data object. Native byte order; no leading padding.}{BER tag}
+  \PacketRow{0x01}{Tag Length}{Number of bytes in Element Tag. Zero selects the complete object and omits Element Tag.}{0x00-0x03}
+  \PacketRow{0x00-0x03}{Element Tag}{Complete BER tag of a unique direct child of the object's outer container.}{BER tag}
+  \PacketRow{0x02}{Offset}{Starting byte within the selected object or element. Zero identifies its first tag byte. Least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0x02}{Requested Length}{Maximum bytes to return, least-significant byte first. Zero requests all remaining bytes.}{0x0000-0xFFFF}
 \end{PacketTable}
-
-\TableNote{\textsuperscript{1}\,Each position MAY carry any value from \code{0x00} to \code{0xFF}; the ACU pads on the left with \code{0x00} when the identifier has fewer than three significant bytes.}

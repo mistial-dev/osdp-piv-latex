@@ -2,6 +2,16 @@
 \addcontentsline{toc}{section}{Changelog}
 
 \begin{description}
+\item[2026-09-16] Changes from OSDP 2.2:
+\begin{itemize}
+  \item Renamed \texttt{osdp\_PIVDATA}/\texttt{osdp\_PIVDATAR} to \texttt{osdp\_PIVGETDATA}/\texttt{osdp\_PIVGETDATAR}, retaining command code \code{0xA3}. Added identifier and tag lengths, two-byte offsets and requested lengths, and whole-object or unique direct-child selection with the original tag and length bytes preserved. Defined OSDP 3.0 multi-part delivery and an all-zero first reply for empty success. Command data length distinguishes the new request from the fixed-length OSDP 2.2 form.
+  \item Added Format Marker \code{0xFF} to the reassembled \texttt{osdp\_CRAUTH} request, retaining command code \code{0xA5}. Multi-part lengths and offsets cover the marker, algorithm, key reference, and challenge. OSDP 3.0 ACUs use the new CRAUTH and PIVGETDATA forms with supporting PDs; PDs may additionally support the OSDP 2.2 forms, with format-specific response handling.
+  \item Renamed \texttt{osdp\_PDERROR} to \texttt{osdp\_PIVERROR} and added GET DATA selection and transfer errors. The new CRAUTH and PIVGETDATA forms return one terminal PIVERROR on failure, replacing CRAUTH's empty failure reply and optional follow-up error. Renumbered tentative PIV-specific errors consecutively from \code{0x1020} through \code{0x1029}; credential removal is now \code{0x1026}.
+  \item Separated credential SM setup, VCI pairing, and PIN verification. Clarified automatic preparation over contact and contactless, PIV Auto failure reporting, and ACU-directed recovery. Authenticated PIN and pairing rejections preserve SM; SM processing and integrity failures end the session.
+  \item Added \texttt{osdp\_CARDSTATUS} Type \code{0x02} diagnostics containing the SM outcome and credential CVC hash. Every CARDSTATUSR now includes Status Type after reply code \code{0x85}: \code{0x01} for standard status and pairing completion, \code{0x02} before the multi-part fields in each diagnostic fragment. Extended \texttt{osdp\_PIVSTATUS} with SW1/SW2 when a verified credential failure status is available; the status word follows the signed response in the reassembled payload.
+  \item Defined cached-PIN reuse without extending the original deadline, silent idle expiration, and completion of requests affected by expiration. Bounded PD timeout defaults to 1--255 seconds. Reassigned SPE flags \code{0x01} for retention across removal and \code{0x02} for Auto Execute; added result \code{0x0B} for credential communication failure or timeout, requiring preparation to restart after an unconfirmed PIN VERIFY. Applied the same restart rule to pairing VERIFY timeouts, reported through existing PIVERROR \code{0x0002} (smart-card timeout).
+  \item Added workflow diagrams and worked packet examples for selection, SM/VCI recovery, PIN-cache timing, and multi-part replies. Standardized table sizes and protocol values on hexadecimal notation.
+\end{itemize}
 \item[2026-09-02] Made proposal builds self-contained by vendoring the SIL-licensed
 Carlito typeface, replacing system Calibri and Arial dependencies with real regular,
 bold, italic, and bold-italic faces, and documenting the XeLaTeX and \texttt{latexmk}

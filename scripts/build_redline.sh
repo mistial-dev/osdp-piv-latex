@@ -13,7 +13,7 @@ fi
 latexpand_tool="${LATEXPAND:-latexpand}"
 latexdiff_tool="${LATEXDIFF:-latexdiff}"
 
-for tool in git tar "$latexpand_tool" "$latexdiff_tool" latexmk; do
+for tool in git tar python3 "$latexpand_tool" "$latexdiff_tool" latexmk; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "Missing required tool: $tool" >&2
     echo "For TeX Live, install the redline tools with: tlmgr install latexdiff latexpand" >&2
@@ -39,6 +39,8 @@ git archive "$base_commit" | tar -x -C "$scratch_dir/base"
 
 "$latexpand_tool" main.tex > "$redline_dir/current.tex"
 
+python3 scripts/expand_redline_rows.py "$redline_dir/base.tex" "$redline_dir/current.tex"
+
 "$latexdiff_tool" \
   --encoding=utf8 \
   --type=UNDERLINE \
@@ -46,8 +48,19 @@ git archive "$base_commit" | tar -x -C "$scratch_dir/base"
   "$redline_dir/current.tex" \
   > "$redline_dir/osdp-piv-proposal-redline.tex"
 
+python3 scripts/expand_redline_rows.py --clean-column-specs \
+  "$redline_dir/osdp-piv-proposal-redline.tex"
+
+# Permit line breaks where adjacent deleted and added identifiers fill a cell.
+perl -0pi -e 's/\\DIFdelend \\DIFaddbegin/\\DIFdelend \\allowbreak\\DIFaddbegin/g; s@/\\DIFdelbegin@/\\allowbreak\\DIFdelbegin@g' \
+  "$redline_dir/osdp-piv-proposal-redline.tex"
+
 perl -0pi -e \
   's/\\date\{\\today\}/\\date\{Redline: '"$base_short"' to '"$current_short"' working tree\\\\\\today\}/' \
+  "$redline_dir/osdp-piv-proposal-redline.tex"
+
+# Deleted headings can reuse counters; give redline links unique destinations.
+perl -0pi -e 's/\\begin\{document\}/\\hypersetup{hypertexnames=false}\n\\begin{document}/' \
   "$redline_dir/osdp-piv-proposal-redline.tex"
 
 latexmk \

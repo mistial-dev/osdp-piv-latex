@@ -7,12 +7,28 @@ PIV_PROFILES ?= 9e-rsa1024
 TEX_SOURCES := main.tex \
 	$(shell find sections -type f -name '*.tex') \
 	$(shell find tables -type f -name '*.tex') \
+	$(shell find figures -type f -name '*.tex') \
 	$(shell find tex -type f \( -name '*.tex' -o -name '*.cls' -o -name '*.sty' \))
 
 all: pdf
 
 test:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+
+pivdata-examples:
+	python3 scripts/generate_pivdata_examples.py
+	python3 scripts/check_pivdata_examples.py
+	python3 scripts/render_pivdata_examples.py
+
+sm-vci-examples:
+	python3 scripts/sm_vci_replay.py --output worked-examples/sm-vci/examples.json
+	python3 scripts/check_sm_vci_examples.py
+	python3 scripts/render_sm_vci_examples.py
+
+crauth-examples:
+	python3 scripts/crauth_examples.py
+	python3 scripts/check_crauth_examples.py
+	python3 scripts/render_crauth_examples.py
 
 live-piv-auto:
 	PIV_PROFILES="$(PIV_PROFILES)" scripts/load_ykman_committed_material.sh
@@ -34,4 +50,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(PDF)
 
-.PHONY: all test live-piv-auto pdf redline clean
+.PHONY: all test pivdata-examples sm-vci-examples crauth-examples live-piv-auto pdf redline clean

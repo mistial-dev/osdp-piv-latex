@@ -1,0 +1,44 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\small,
+  recoverybox/.style={draw=OSDPBlue,rounded corners=3pt,fill=OSDPLightGray,
+    text width=12.5cm,align=left,inner sep=9pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[recoverybox] (failure) at (0,0) {
+  \textbf{1. PD reports why PIV Auto stopped}\\[3pt]
+  This PIN-based contactless 0x9A workflow requires SM, VCI, and a verified PIN.
+  An empty trust store produces PIVSTATUS Result 0x02, Detail 0x01.
+  The PD ends this attempt.};
+\node[recoverybox,anchor=north] (inspect) at ([yshift=-0.45cm]failure.south) {
+  \textbf{2. ACU obtains the diagnostic and signer information}\\[3pt]
+  CARDSTATUS Type 0x02 requests CARDSTATUSR Type 0x02 fragments containing
+  the setup outcome and any received CVC's hash.
+  PIVGETDATA for 0x5FC122 reads the signer object from the credential.
+  Recovery stops if that read fails. An empty store means setup was skipped, so the
+  diagnostic reports that no CVC hash is available.};
+\node[recoverybox,anchor=north] (trust) at ([yshift=-0.45cm]inspect.south) {
+  \textbf{3. ACU validates and loads the trust anchor}\\[3pt]
+  The ACU validates the signer certificate against an authorized root and
+  deployment policy. After validation, PIVVCILOADTA loads the anchor.
+  The ACU reapplies PIVMODE to start a new automatic attempt.};
+\node[recoverybox,anchor=north] (pair) at ([yshift=-0.45cm]trust.south) {
+  \textbf{4. PD reports pairing required; ACU supplies the code}\\[3pt]
+  SM succeeds, but this credential requires pairing. PIV Auto reports
+  Result 0x05, Detail 0x01 and ends the attempt. The ACU sends PIVXMITPAIRING
+  and waits for status confirming SM and VCI.};
+\node[recoverybox,anchor=north] (auth) at ([yshift=-0.45cm]pair.south) {
+  \textbf{5. ACU completes authentication in commanded mode}\\[3pt]
+  PIVSPE Mode 0x01 collects and verifies the PIN. The ACU obtains the 0x9A
+  certificate with PIVGETDATA and sends a fresh challenge with CRAUTH.
+  The ACU validates the certificate and response before deciding access.
+  The existing SM and PIN state remain in use.};
+\draw[flow] (failure.south) -- (inspect.north);
+\draw[flow] (inspect.south) -- (trust.north);
+\draw[flow] (trust.south) -- (pair.north);
+\draw[flow] (pair.south) -- (auth.north);
+\end{tikzpicture}
+\caption{Recovery from an empty PD trust store for contactless PIV authentication
+with key 0x9A. Every step depends on a successful result from the preceding step.
+Unsupported SM or VCI requires a different ACU-selected workflow.}
+\label{fig:sm-recovery}
+\end{figure}

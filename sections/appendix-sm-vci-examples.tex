@@ -1,0 +1,44 @@
+\section{Credential SM and VCI Worked Examples (Informative)}
+\label{app:sm-vci-examples}
+
+These examples follow the preparation and PIN-verification flows in
+Subsection~\ref{sec:credential-sm-flow}. A simulated ACU sends complete OSDP
+packets to a simulated PD. The PD replays existing card captures and reports
+the resulting credential state. These examples omit OSDP Secure Channel for
+clarity; the test harness assumes that the OSDP Secure Channel authorization
+requirements are satisfied.
+
+The contact and contactless card01 captures supply the card commands and
+replies. The verifier checks the CVC signature against an existing trust anchor,
+recomputes SM key establishment, and checks protected command and response
+MACs and encryption. The replay retains intervening captured exchanges so the
+session counters and MAC chains remain intact. Those intervening exchanges
+preserve the original card session. The card captures include earlier
+provisioning and data-read commands; those commands impose no additional
+requirements on automatic card preparation. The examples replay recorded
+sessions; no connected card is used.
+
+\begin{SimpleTable}{Replay coverage}{3}
+  {|L{0.27\SimpleUsableWidth}|L{0.35\SimpleUsableWidth}|L{0.38\SimpleUsableWidth}|}
+  {\TableHeaderCell{Case} & \TableHeaderCell{Evidence} & \TableHeaderCell{Purpose}}
+  Contact SM & Captured SM session and CVC validation & Report SM with VCI absent. \\\hline
+  Incorrect PIN & Modeled authenticated rejection & Clear the failed PIN while preserving SM and VCI. \\\hline
+  Commanded pairing and PIN & Captured protected VERIFY exchanges & Complete pairing before verifying the cached PIN. \\\hline
+  PIV Auto failure & Modeled results and full status words & Report the cause across multipart replies. \\\hline
+  PIN cache expiration & Modeled timing, with captured VERIFY for the submitted-command case & Separate cache availability from credential PIN verification. \\\hline
+\end{SimpleTable}
+
+Complete packets, APDUs, and source references are in
+\href{run:worked-examples/sm-vci/examples.json}{the SM/VCI example file}.
+The accompanying README gives the replay and independent-verification commands.
+Packet dumps use hexadecimal byte pairs, including the OSDP header and CRC.
+Each example starts at sequence \code{0x01} on an established link to PD
+address \code{0x01}. Standard status-query and pairing replies use the same
+\texttt{osdp\_CARDSTATUSR} layout with Status Type \code{0x01}.
+Diagnostic replies carry Status Type \code{0x02} before the multi-part fields
+in every fragment. Timing examples identify the modeled elapsed time at each
+exchange; captured APDUs retain their original order.
+
+\input{tables/sm-vci-worked-examples}
+
+\input{sections/appendix-sm-recovery}

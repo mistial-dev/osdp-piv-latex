@@ -1,0 +1,35 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily\small,
+  box/.style={draw=OSDPBlue,rounded corners=2pt,fill=OSDPLightGray,
+    text width=11cm,align=center,inner sep=7pt},
+  branch/.style={box,text width=5cm},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[box] (read) at (0,0) {ACU requests an object, optional inner tag, and byte range\\
+PD reads the credential and completes card-side response chaining};
+\node[branch] (whole) at (-3,-2.2) {\textbf{Tag Length = 0x00}\\
+Select the complete object:\\outer tag, encoded length, and value};
+\node[branch] (child) at (3,-2.2) {\textbf{Tag Length > 0x00}\\
+Select one unique direct child:\\child tag, encoded length, and value};
+\draw[flow] (read.south) -- (0,-1) -| (whole.north);
+\draw[flow] (read.south) -- (0,-1) -| (child.north);
+\node[box] (range) at (0,-5.2) {Apply Offset and Requested Length to the selected bytes\\
+Offset 0x0000 starts at the selected tag. Length 0x0000 requests the remainder.\\
+A partial range may begin or end inside a tag, length, or value.};
+\draw[flow] (whole.south) -- (-3,-3.7) -| (range.north);
+\draw[flow] (child.south) -- (3,-3.7) -| (range.north);
+\node[box] (retain) at (0,-7.3) {PD retains the requested bytes before the first data reply\\
+MpSizeTotal = retained byte count; first MpOffset = 0x0000};
+\node[box] (reply) at (0,-9.0) {Each ACU POLL receives the next PIVGETDATAR fragment\\
+Reply code, total, offset, fragment size, then fragment bytes};
+\node[box] (reassemble) at (0,-10.7) {ACU reassembles the requested bytes in offset order\\
+The ACU interprets partial data using the original request.};
+\draw[flow] (range) -- (retain);
+\draw[flow] (retain) -- (reply);
+\draw[flow] (reply) -- (reassemble);
+\end{tikzpicture}
+\caption{GET DATA selection precedes byte-range selection and OSDP fragmentation.
+ACK acknowledges acceptance. A failed read or selection ends with PIVERROR on a
+poll instead of data fragments. Child-selection errors are defined in the text.}
+\label{fig:pivgetdata-selection}
+\end{figure}

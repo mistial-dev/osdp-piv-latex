@@ -1,0 +1,6 @@
+\begin{PacketTable}{PIV Error Reply (osdp\_PIVERROR)}
+  \label{tab:piverror}
+  \PacketRow{0x01}{CMND}{Reply identifier.}{0x8A (tentative)}
+  \PacketRow{0x02}{Error Code}{Two-byte error code, least-significant byte first.}{0x0001-0x10FF}
+  \PacketRow{0x00 or 0x02}{Status Word}{SW1 followed by SW2 when a card command returned the failure being reported. Omitted for failures detected locally by the PD. See the status-word rules below.}{-}
+\end{PacketTable}

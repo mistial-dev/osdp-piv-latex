@@ -1,0 +1,27 @@
+\begin{PacketTable}{SM Diagnostic Reply (CARDSTATUSR, Status Type 0x02)}
+  \label{tab:sm-diagnostic}
+  \PacketRow{0x01}{CMND}{Reply identifier.}{0x85 (tentative)}
+  \PacketRow{0x01}{Status Type}{SM diagnostics. Repeated in every fragment, outside the diagnostic record.}{0x02}
+  \PacketRow{0x02}{MpSizeTotal}{Total diagnostic record length, least-significant byte first.}{0x0023}
+  \PacketRow{0x02}{MpOffset}{Offset within the diagnostic record, least-significant byte first.}{0x0000-0xFFFF}
+  \PacketRow{0x02}{MpFragmentSize}{Diagnostic bytes in this reply, least-significant byte first.}{0x0001-0xFFFF}
+  \PacketRow{0x01}{Outcome}{\code{0x00}: setup not attempted; \code{0x01}: SM established; \code{0x02}: SM unavailable; \code{0x03}: security check or SM processing failed, credential operations blocked.}{0x00-0x03}
+  \PacketRow{0x01}{Detail}{Reason from Table~\ref{tab:sm-diagnostic-details}.}{0x00-0x07}
+  \PacketRow{0x01}{CVC Hash Present}{\code{0x01} when the PD received a complete CVC; otherwise \code{0x00}.}{0x00-0x01}
+  \PacketRow{0x20}{CVC Hash}{SHA-256 of the received CVC, including tag \code{0x7F21}, its encoded length, and value, unchanged. All zero when CVC Hash Present is \code{0x00}.}{0x20 bytes}
+\end{PacketTable}
+
+Outcome values \code{0x04}-\code{0xFF} and Detail values
+\code{0x08}-\code{0xFF} are reserved for future use.
+
+\begin{ValueDescriptionTable}{SM Diagnostic Detail Codes}{Value}
+  \label{tab:sm-diagnostic-details}
+  \ValueDescriptionRow{0x00}{No failure detail. Used with Outcome \code{0x00} or \code{0x01}.}
+  \ValueDescriptionRow{0x01}{Trust store empty. Outcome \code{0x02}; CVC Hash Present is zero because setup was skipped.}
+  \ValueDescriptionRow{0x02}{No matching trust path through the loaded anchors. Outcome \code{0x02}. The ACU can inspect the signer object to determine whether an anchor or intermediate CVC is missing.}
+  \ValueDescriptionRow{0x03}{CVC missing, malformed, or invalid. Outcome \code{0x03}. CVC Hash Present is zero when no complete CVC was received.}
+  \ValueDescriptionRow{0x04}{Authentication cryptogram invalid. Outcome \code{0x03}.}
+  \ValueDescriptionRow{0x05}{No credential SM algorithm supported by both the PD and credential. Outcome \code{0x02}.}
+  \ValueDescriptionRow{0x06}{Other SM processing failure. Outcome \code{0x03}.}
+  \ValueDescriptionRow{0x07}{SM disabled by PIVMODE. Outcome \code{0x02}.}
+\end{ValueDescriptionTable}

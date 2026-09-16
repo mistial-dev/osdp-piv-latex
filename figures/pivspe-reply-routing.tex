@@ -1,0 +1,31 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily\small,
+  box/.style={draw=OSDPBlue,rounded corners=2pt,fill=OSDPLightGray,
+    text width=3.6cm,align=center,inner sep=6pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[box,text width=11.8cm] (request) at (0,0) {ACU sends PIVSPE\\The selected mode determines acceptance and reply interpretation.};
+\node[box,anchor=north] (status) at (-4.3,-1.8) {\textbf{Mode 0x00}\\PD returns PIVSPER directly:\\cache and PIN-verification status};
+\node[box,anchor=north] (cancel) at (0,-1.8) {\textbf{Mode 0x05}\\PD cancels PIN entry, clears the cache, and returns ACK.\\No later completion reply.};
+\node[box,anchor=north] (operation) at (4.3,-1.8) {\textbf{Modes 0x01--0x04, 0x06}\\PD accepts with ACK and starts the operation.};
+\draw[flow] (request.south) -- (0,-0.8) -| (status.north);
+\draw[flow] (request.south) -- (cancel.north);
+\draw[flow] (request.south) -- (0,-0.8) -| (operation.north);
+\node[box] (poll) at (4.3,-5.6) {ACU sends POLL};
+\node[box] (pending) at (0,-7.6) {\textbf{Operation pending}\\PD returns ACK.};
+\node[box] (done) at (4.3,-7.6) {\textbf{Operation finished}\\PD returns one PIVSPER.\\Request ends, including on failure.};
+\draw[flow] (operation) -- (poll);
+\draw[flow] (poll.west) -| (pending.north);
+\draw[flow] (pending.west) -- (-2.15,-7.6) -- (-2.15,-5.6) -- (poll.west);
+\draw[flow] (poll) -- (done);
+\node[box] (stop) at (-4.3,-7.6) {\textbf{ACU cancels}\\Mode 0x05 clears cache; ABORT preserves completed cache.\\PD returns ACK; request ends.};
+\draw[flow] (pending.south) -- (0,-10.1) -| (stop.south);
+\node[box,text width=11.8cm] (interpret) at (0,-12.0) {\textbf{ACU interprets PIVSPER using the outstanding mode}\\
+Modes 0x01--0x04: operation result. Mode 0x06: remaining attempts or 0xFF (unavailable).};
+\draw[flow] (done.south) -- (4.3,-10.8) -| (interpret.north);
+\end{tikzpicture}
+\caption{SPE request and reply lifecycle. While an operation is pending, the ACU
+sends only POLL, Mode 0x05, or ABORT. ABORT cancels the operation while preserving
+a previously completed cache. An unsupported or malformed request follows the NAK rules.}
+\label{fig:pivspe-reply-routing}
+\end{figure}

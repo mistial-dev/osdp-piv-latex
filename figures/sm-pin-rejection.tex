@@ -1,0 +1,29 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\small,
+  actor/.style={draw=OSDPBlue,fill=OSDPLightGray,rounded corners=3pt,
+    minimum width=2.3cm,minimum height=0.65cm},
+  message/.style={->,thick,draw=OSDPBlue},
+  reply/.style={message,dashed},
+  note/.style={draw=OSDPBlue,fill=OSDPLightGray,align=center,
+    text width=6cm,inner sep=7pt}]
+\node[actor] (acu) at (0,0) {ACU};
+\node[actor] (pd) at (5.7,0) {PD};
+\node[actor] (credential) at (11.4,0) {Credential};
+\foreach \x in {0,5.7,11.4} \draw[gray,dashed] (\x,-0.4) -- (\x,-11.0);
+\draw[message] (0,-1.1) -- node[above,align=center]{PIVSPE Mode 0x02\\Verify the cached PIN} (5.7,-1.1);
+\draw[reply] (5.7,-1.9) -- node[above]{ACK: request accepted} (0,-1.9);
+\draw[message] (5.7,-3.0) -- node[above,align=center]{VERIFY PIN (key 0x80)\\Protected by existing SM} (11.4,-3.0);
+\draw[reply] (11.4,-4.1) -- node[above,align=center]{Verified protected result: 0x63Cx\\Incorrect PIN; x attempts remain} (5.7,-4.1);
+\node[note] at (5.7,-5.25) {PD erases the cached PIN and clears\\PIN-verification status.\\SM, pairing, and VCI remain established.};
+\draw[message] (0,-7.2) -- node[above]{POLL} (5.7,-7.2);
+\draw[reply] (5.7,-8.5) -- node[above,align=center]{PIVSPER 0x03\\PIN mismatch; request ended} (0,-8.5);
+\draw[message] (0,-10.0) -- node[above,align=center]{ACU chooses to retry:\\PIVSPE Mode 0x04, acquire a new PIN} (5.7,-10.0);
+\node[note,text width=11.4cm] at (5.7,-12.0) {The ACU can query remaining attempts with Mode 0x06.
+After new PIN acquisition completes, a new Mode 0x02 request uses the existing SM and VCI.};
+\end{tikzpicture}
+\caption{Incorrect PIN over established VCI. The PD verifies the protected reply
+before reporting the rejection. PIN entry occurs at the PD; the ACU never receives
+the PIN. Acquisition and its completion follow the normal ACK/POLL exchange.}
+\label{fig:sm-pin-rejection}
+\end{figure}

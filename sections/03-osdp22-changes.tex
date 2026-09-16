@@ -6,10 +6,47 @@ This section documents the normative deltas that apply when an OSDP~2.2 implemen
 
 \subsubsection{Authentication Challenge (osdp\_CRAUTH)}
 
-OSDP~2.2 transports the ISO/IEC~7816-4 \code{GENERAL AUTHENTICATE} command through \texttt{osdp\_CRAUTH}. The OSDP~3.0 profile maintains the same framing fields, named \texttt{MpSizeTotal}, \texttt{MpOffset}, and \texttt{MpFragmentSize} as in the generic OSDP multi-part structure, but clarifies how the command payload maps to the PIV operation selected by the algorithm and key reference.
+The \texttt{osdp\_CRAUTH} command, code \code{0xA5}, transports a
+\code{GENERAL AUTHENTICATE} operation to the credential. An OSDP~3.0 ACU
+\textbf{SHALL} use the new format with a PD that supports it. An OSDP~3.0
+PD \textbf{SHALL} support the new format and \textbf{MAY} also support
+the OSDP~2.2 format.
+
+\paragraph{Request format and recognition}
+The new format uses the OSDP~3.0 multi-part fields immediately after the
+command code. The reassembled data consists of Format Marker \code{0xFF},
+Algorithm, Reference Identifier, and Challenge, in that order. The three
+leading fields are each one byte. \emph{MpSizeTotal} counts all of these
+bytes, including the marker, algorithm, and key reference.
+
+The first data fragment \textbf{SHALL} start at offset \code{0x0000} and
+contain at least one data byte. The PD \textbf{SHALL} select the new format
+when that first byte is \code{0xFF}. Otherwise, the PD \textbf{SHALL}
+select the OSDP~2.2 format if supported, or reject the request with
+\texttt{osdp\_NAK} \code{0x09} (unable to process command).
+This proposal reserves \code{0xFF} in that position as an OSDP format
+marker. A dual-format PD \textbf{SHALL NOT} interpret that byte as a
+legacy algorithm identifier. The marker is separate from the Algorithm
+field and is removed before the PD constructs the credential command.
+
+The PD \textbf{SHALL} retain the selected format until completion or
+cancellation. Later fragments carry the next bytes of the same data record;
+the marker and other fields are not repeated. Fragment boundaries may split
+the leading fields or the challenge. The PD \textbf{SHALL} validate the
+complete record before sending the credential command. The minimum record
+length is \code{0x0003}; the selected algorithm determines the required
+challenge length. A malformed new-format record \textbf{SHALL NOT} be
+retried as an OSDP~2.2 record. Multi-part framing errors use the applicable
+OSDP NAK rules. Invalid reassembled parameters return PIVERROR
+\code{0x0005} (invalid parameter) after acceptance.
+
+A PD accepting the OSDP~2.2 form \textbf{SHALL} use that form's request
+and response rules for the transaction. The rules below apply to the new form.
+The worked example in Appendix~\ref{app:crauth-examples} shows the marker,
+algorithm, and key reference divided between command fragments.
 
 \begin{itemize}
-  \item The \emph{Algorithm} field continues to be sent in the first fragment only. Codes \code{0x05}, \code{0x06}, and \code{0x07} select RSA private-key operations and preserve backwards compatibility with OSDP~2.2. Codes \code{0x08}, \code{0x0A}, and \code{0x0C} select AES encryption using 128-, 192-, and 256-bit keys respectively. Codes \code{0x11} and \code{0x14} identify ECC P-256 and P-384 mechanisms; the selected PIV key reference determines whether the mechanism is used for ECDSA signature generation or ECDH key establishment.
+  \item Codes \code{0x05}, \code{0x06}, and \code{0x07} identify RSA private-key operations. Codes \code{0x08}, \code{0x0A}, and \code{0x0C} identify AES encryption with 128-, 192-, and 256-bit keys respectively. Codes \code{0x11} and \code{0x14} identify ECC P-256 and P-384 mechanisms; the selected key reference determines whether the operation is ECDSA signature generation or ECDH key establishment. Algorithm selection remains subject to the applicable NIST requirements.
   \item The \emph{Key} field retains its role as the card’s reference identifier. PDs \textbf{SHALL NOT} reinterpret or remap the identifier.
   \item For RSA algorithms (\code{0x05}, \code{0x06}, \code{0x07}), the \emph{Challenge} field carries the encoded datum for the RSA private-key operation. The PD forwards the value unmodified; padding and digest encoding are the responsibility of the ACU.
   \item For AES algorithms (\code{0x08}, \code{0x0A}, \code{0x0C}), the \emph{Challenge} field contains the plaintext block(s) to be encrypted. PDs \textbf{SHALL} send the data to the credential without padding; ACUs \textbf{SHALL} provide data aligned to the block size dictated by the selected key length and card profile.
@@ -19,11 +56,32 @@ OSDP~2.2 transports the ISO/IEC~7816-4 \code{GENERAL AUTHENTICATE} command throu
 
 \input{tables/osdp-crauth}
 
+When credential SM is established, the PD \textbf{SHALL} protect the resulting
+credential command using that context. The credential enforces the selected key's
+access conditions. An available card-authentication key (\code{0x9E}) may be
+used without SM or PIN verification when the credential permits it. Shared
+card-transport rules appear in Subsection~\ref{sec:credential-sm-flow}.
+
 \paragraph{Deprecated osdp\_GENAUTH} The \texttt{osdp\_GENAUTH} command is deprecated and expected to be removed in a future revision of this specification. Using a PIV credential to decrypt or process arbitrary data is unsafe and unnecessary for credential verification; implementations \textbf{SHOULD} use \texttt{osdp\_CRAUTH} flows instead.
 
 \subsubsection{Response to Challenge (osdp\_CRAUTHR)}
 
-The reply continues to use the OSDP~2.2 multi-part format. Successful execution yields a response containing the credential’s entire \code{GENERAL AUTHENTICATE} data (minus the ISO/IEC~7816 status word), including the returned Dynamic Authentication Template; PDs \textbf{SHALL NOT} strip outer BER-TLV tags or lengths. If the credential reports an error, the PD \textbf{SHALL} return the unchanged \texttt{osdp\_CRAUTHR} reply (for example with \texttt{MpFragmentSize = 0}) to preserve OSDP~2.2 behaviour. When available, the PD \textbf{SHOULD} also return \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL} with an applicable PIV code—for example \code{0x1020} (function not supported by credential), \code{0x1022} (insufficient credential storage), \code{0x1023} (credential security status not satisfied, including PIN-required conditions), \code{0x1024} (data object/tag not found), \code{0x1025} (VCI not established), or \code{0x1027} (credential not present/removed). Generic parameter errors may continue to use \code{0x0005} (incorrect parameter). PIN-entry outcomes are reported through command-specific result paths, such as \texttt{osdp\_PIVSPER}, when secure PIN entry is used. ACUs \textbf{SHALL} tolerate an optional \texttt{osdp\_PDERROR} following that reply; OSDP~2.2 ACUs may log and ignore the unknown reply code.
+OSDP~3.0 uses the same completion rule for CRAUTH and PIVGETDATA:
+data replies carry successful results; one terminal PIVERROR reports a
+failed accepted operation. This replaces CRAUTH's OSDP~2.2 failure behavior.
+
+After accepting the complete CRAUTH request, the PD \textbf{SHALL} return
+the result on subsequent \texttt{osdp\_POLL} commands. On success, the PD
+\textbf{SHALL} return \texttt{osdp\_CRAUTHR} using the OSDP~3.0 multi-part
+format. On failure, the PD \textbf{SHALL} return one
+\texttt{osdp\_PIVERROR} with the applicable error code from
+Subsection~\ref{sec:new-piv-error-codes}. That reply ends the operation.
+The PD \textbf{SHALL NOT} precede the error with an empty CRAUTHR.
+If CRAUTHR fragments have already been returned, the ACU \textbf{SHALL}
+discard the partial response when PIVERROR arrives. OSDP retransmissions
+repeat the same reply without repeating the credential operation.
+Command rejection and transport faults continue to use the applicable
+OSDP NAK rules.
 
 \paragraph{Reply structure}\mbox{}\\
 \texttt{osdp\_CRAUTHR} \textbf{SHALL} return the credential’s full ISO/IEC~7816
@@ -31,37 +89,208 @@ The reply continues to use the OSDP~2.2 multi-part format. Successful execution 
 Authentication Template, framed by the standard OSDP multi-part fields. PDs
 \textbf{SHALL NOT} include SW1\textbar SW2 in \texttt{osdp\_CRAUTHR}; any
 status words from the credential \textbf{SHALL} be carried only in
-\texttt{osdp\_PDERROR} when a card/APDU failure occurs. PDs \textbf{SHALL NOT}
+\texttt{osdp\_PIVERROR} under the status-word rules in
+Subsection~\ref{sec:piverror}. PDs \textbf{SHALL NOT}
 strip outer BER-TLV tags or lengths from the returned payload.
 
 \input{tables/osdp-crauthr}
 
-\subsubsection{Get PIV Data (osdp\_PIVDATA)}
+\subsubsection{Get PIV Data (osdp\_PIVGETDATA)}\label{sec:pivdata}
 
-OSDP~2.2 defined \texttt{osdp\_PIVDATA} with a five-byte payload that selected a PIV object and optional element. The original text did not explicitly specify how to pad identifiers shorter than three bytes, how nested tags should be returned, or how to interpret the data offset. OSDP~3.0 clarifies these behaviors so that ACUs and PDs apply a single normative approach.
+OSDP~3.0 retains command code \code{0xA3} and introduces the PIVGETDATA
+request format defined here. An OSDP~3.0 ACU \textbf{SHALL} send the new
+format to a PD that supports it. An OSDP~3.0 PD \textbf{SHALL} support
+the new format and \textbf{MAY} also support the OSDP~2.2 format.
+The ACU \textbf{SHALL} confirm Enhanced PIV support (Function Code~12
+bit~\code{0x04}) before using the new format. The reply uses the
+OSDP~3.0 multi-part layout. Worked exchanges appear in
+Appendix~\ref{app:pivdata-examples}.
 
-\begin{itemize}
-  \item The ACU \textbf{SHALL} transmit the PIV Object Identifier as three bytes encoded most-significant byte first. When the identifier contains fewer than three significant bytes, the ACU \textbf{SHALL} left-pad the value with \code{0x00} or \code{0x0000}, as required, so that the transmitted field is exactly three bytes. The PD \textbf{SHALL NOT} forward those pad bytes to the credential; it \textbf{SHALL} issue the ISO~7816-4 \texttt{GET DATA} APDU using only the significant identifier bytes. If VCI secure messaging is established, the PD \textbf{SHALL} use the appropriate secure channel automatically; no explicit selector is present in the command.
-  \item The field previously described as “PIV element ID” is renamed \emph{PIV Tag}. A tag value of \code{0x00} directs the PD to return the complete BER-TLV structure, including the native outer tag (for example \code{0x7E} Discovery, \code{0x7F61} BIT Group Template) or the \code{0x53}/\code{0x73} wrapper used by other PIV objects. Any non-zero value selects a single root-level tag within the object. When the outer tag is \code{0x53} or \code{0x73}, the PD \textbf{SHALL} strip that wrapper before returning the selected tag. For other outer tags, the PD \textbf{SHALL} return the requested tag if present and \textbf{SHALL NOT} reject the request solely because the wrapper is not \code{0x53}/\code{0x73}. Tags \textbf{SHALL} be a single byte in the range \code{0x01}-\code{0xFF}; multi-byte DER tags are not supported and \textbf{MUST} be retrieved by issuing a tag value of \code{0x00} and parsing the returned object at the ACU.
-  \item The data offset now supports one- or two-byte encodings. PDs \textbf{SHALL} accept either form and determine which was used based on the command length. The offset applies to the selected payload (entire object when the tag is zero, or the chosen tag otherwise). When a credential-side error occurs, PDs \textbf{SHALL} return the unchanged \texttt{osdp\_PIVDATAR} reply (for example with \texttt{MpFragmentSize = 0}) to maintain OSDP~2.2 compatibility. If available, PDs \textbf{MAY} report additional detail via \texttt{osdp\_PDERROR} on a subsequent \texttt{osdp\_POLL} using code \code{0x1023} when security prerequisites are not satisfied, \code{0x1024} when the requested object or tag is absent, or \code{0x1027} when the credential is not present or is removed; see Subsection~\ref{sec:new-piv-error-codes}. ACUs \textbf{SHALL} tolerate an optional \texttt{osdp\_PDERROR} following that reply; OSDP~2.2 ACUs may log and ignore the unknown reply code.
-\end{itemize}
+\paragraph{Recognizing the request format}
+The PD \textbf{SHALL} determine the format from the command data length,
+excluding the command code, OSDP header, security block, and trailer.
+The OSDP~2.2 format contains exactly \code{0x05} data bytes: a three-byte
+object identifier, a one-byte element identifier, and a one-byte offset.
+The new format contains \code{0x06} plus Identifier Length plus Tag Length
+data bytes, giving a range of \code{0x07} through \code{0x0C} bytes.
+These lengths do not overlap.
+
+A PD that supports both formats \textbf{SHALL} interpret exactly
+\code{0x05} data bytes using the OSDP~2.2 definition, including its selection
+and response rules. A new-format-only PD \textbf{SHALL} reject that request
+with PIVERROR \code{0x0005} (invalid parameter) on a later poll after ACK.
+For a new-format request, the PD \textbf{SHALL} validate both length fields
+and the exact total length before accessing the credential. Any other data
+length or invalid new-format field length produces the same error.
+The PD \textbf{SHALL NOT} reinterpret a malformed new-format request as
+an OSDP~2.2 request.
 
 \input{tables/osdp-pivdata}
 
-\subsubsection{PIV Data Reply (osdp\_PIVDATAR)}
+\paragraph{Request encoding}
+The ACU \textbf{SHALL} provide valid Object Identifier and Element Tag encodings.
+The PD \textbf{SHALL} pass Object Identifier to the card unmodified and use
+Element Tag unmodified to select a matching element from the response.
+Each length field \textbf{SHALL}
+equal the number of tag bytes that follow it. Identifier Length is one to three;
+Tag Length is zero to three. Tag Length zero omits Element Tag.
+The PD \textbf{SHALL} reject invalid field lengths, truncated requests,
+and trailing request bytes with \texttt{osdp\_PIVERROR} \code{0x0005}
+(invalid parameter).
 
-The reply structure is unchanged from a field-count perspective, but OSDP~3.0 aligns the semantics with the command refinements above:
+The PD \textbf{SHALL} issue the card's \texttt{GET DATA} operation for the
+requested object on the active credential interface. Each request reads the
+credential; the PD \textbf{SHALL NOT} substitute object data retained from an
+earlier request. If the credential denies access through that interface, the
+PD \textbf{SHALL} report the failure using \texttt{osdp\_PIVERROR}.
+When credential Secure Messaging (SM) is established, the PD
+\textbf{SHALL} use that SM context. The credential enforces VCI availability
+and the requested object's access conditions. The PD \textbf{SHALL} complete card-side response
+chaining and remove status words and secure-messaging envelopes before
+selecting response data. A requested OSDP length does not limit the card-side
+transfer needed to complete that operation.
 
-\begin{itemize}
-  \item \texttt{MpSizeTotal}, \texttt{MpOffset}, and \texttt{MpFragmentSize} continue to be encoded LSB first; they now explicitly report the size, fragment base, and fragment length for the content selected by the \texttt{osdp\_PIVDATA} request (entire object or chosen tag).
-  \item \texttt{CARD\_DATA} \textbf{SHALL} convey the exact bytes obtained from the credential after applying any tag stripping specified by the command. No additional framing or padding is permitted.
-\end{itemize}
+\paragraph{Selection}
+When Tag Length is zero, the PD \textbf{SHALL} select the complete object,
+including its outer tag, length, and value. The PD \textbf{SHALL} preserve
+the original bytes returned by the credential.
+PIV responses use \code{0x53} for ordinary objects and native
+\code{0x7E} and \code{0x7F61} containers for Discovery and the BIT Group.
+Other application profiles may define other containers; whole-object selection
+does not substitute or remove them.
+
+For nonzero Tag Length, the PD \textbf{SHALL} parse the outer container and
+select exactly one matching direct child, including that child's tag, length,
+and value. The enclosing object's tag and length are not included.
+The PD \textbf{SHALL NOT} search recursively, decompress the value, or
+re-encode the selected element. The PD \textbf{SHALL} inspect the complete
+child sequence before accepting a unique match. No match produces
+\code{0x1024} (data object or tag not found); multiple matches produce
+\code{0x1027} (ambiguous element selection); malformed container
+or child encoding produces \code{0x1028} (malformed credential-object encoding).
+Element extraction requires definite
+BER lengths, a single complete outer container, and child boundaries within
+that container. To select an inner tag, the PD \textbf{SHALL} search the
+elements directly inside the object's outer container. In BER-TLV encoding,
+\emph{primitive} means the tag marks its value as data bytes;
+\emph{constructed} means the tag marks its value as a sequence of TLV elements.
+For PIV objects returned under tag \code{0x53}, the PD \textbf{SHALL} treat
+the contents as TLV elements even though the tag marks them as primitive.
+Child values are opaque regardless of their constructed bit; the PD
+\textbf{SHALL NOT} recursively validate them as ASN.1 structures.
+Whole-object selection does not require child parsing.
+An empty card response is valid whole-object data; a nonzero Tag Length
+against an empty response \textbf{SHALL} produce \code{0x1024}
+(data object or tag not found).
+
+\paragraph{Offset and requested length}
+The PD \textbf{SHALL} apply Offset and Requested Length once, before dividing
+the data into fragments. Offset zero identifies the first byte of the selected
+object's or element's tag. The PD \textbf{SHALL} start at Offset and return
+no more than Requested Length bytes. Requested Length zero requests all remaining bytes.
+If fewer bytes remain, the PD \textbf{SHALL} return those bytes.
+The resulting bytes are the \emph{requested data}.
+Offset equal to the selected-data length produces an empty success;
+Offset beyond that length produces \code{0x0005} (invalid parameter).
+The requested data \textbf{SHALL NOT} exceed 65,535 bytes.
+An oversized through-end result produces \code{0x1029} (transfer length exceeded);
+a bounded range within a
+larger object is permitted. A nonzero Offset can skip tag and length bytes.
+The requested range may begin or end within a tag, length, or value.
+The PD \textbf{SHALL} return those bytes unchanged. The ACU is responsible
+for interpreting a partial result.
+
+Figure~\ref{fig:pivgetdata-selection} shows how selection and fragmentation relate.
+\input{figures/pivgetdata-selection}
+
+\paragraph{Acceptance and completion}
+The PD \textbf{SHALL} acknowledge an accepted operation with \texttt{osdp\_ACK}.
+Acceptance does not indicate successful card access or parameter validation.
+The PD \textbf{SHALL} return the result on a subsequent \texttt{osdp\_POLL}:
+\texttt{osdp\_PIVGETDATAR} for success or \texttt{osdp\_PIVERROR} for failure.
+While processing is incomplete, the PD \textbf{SHALL} answer polls with
+\texttt{osdp\_ACK}. Unsupported commands and transport faults retain their
+OSDP \texttt{osdp\_NAK} responses.
+
+Only one operation may be outstanding at that PD during this read.
+Until the read completes or is aborted, the ACU \textbf{SHALL} send only
+\texttt{osdp\_POLL} or \texttt{osdp\_ABORT} to that PD.
+The PD \textbf{SHALL} reject a competing command with \texttt{osdp\_NAK}
+\code{0x09} (unable to process command record) without replacing the active operation.
+Traffic to other PDs is unaffected.
+On \texttt{osdp\_ABORT}, the PD \textbf{SHALL} discard pending data or errors,
+cancel further delivery, and return \texttt{osdp\_ACK}.
+It \textbf{SHALL NOT} subsequently report completion for that operation.
+
+The PD \textbf{SHALL} prepare and retain all requested data before sending the
+first data fragment. The data \textbf{SHALL} come from one credential operation.
+The PD \textbf{SHALL NOT} combine data from different credential presentations.
+Once delivery begins, the retained bytes remain unchanged.
+Card removal before all requested data is retained produces \code{0x1026}
+(credential not present or removed);
+removal afterward does not change the retained data. A card-operation timeout produces
+\code{0x0002} (smart-card timeout), insufficient PD resources produce
+\code{0x1021} (insufficient PD memory or storage), and
+unsatisfied credential security conditions produce \code{0x1023}
+(credential security status not satisfied).
+A failure produces one terminal \texttt{osdp\_PIVERROR}, not an empty
+\texttt{osdp\_PIVGETDATAR} followed by optional error detail.
+Error definitions appear in Subsection~\ref{sec:new-piv-error-codes}.
+
+\subsubsection{PIV Data Reply (osdp\_PIVGETDATAR)}\label{sec:pivdatar}
 
 \input{tables/osdp-pivdatar}
 
-\subsection{PD Error Codes for PIV}\label{sec:new-piv-error-codes}
+The PD \textbf{SHALL} transfer the requested data using the OSDP~3.0 multi-part
+structure and usage rules. The ACU retrieves each fragment with \texttt{osdp\_POLL}.
+Every reply contains the reply identifier, the three two-byte multi-part fields,
+and the next portion of the requested data. The multi-part fields use
+least-significant byte first, in the order shown in the table.
 
-PD error codes are carried in \texttt{osdp\_PDERROR} using two-byte codes (least-significant byte first). The common PD codes remain available (for example \code{0x0001} SC\_ERROR with optional SW1\textbar SW2, \code{0x0002} SC\_TIMEOUT, \code{0x0004} TLV\_MISSING, \code{0x0005} INVALID\_PARAM, \code{0x0006} SECURE\_CHANNEL\_REQUIRED, \code{0x0007} MP\_INVALID, \code{0x0008} MP\_OUT\_OF\_SEQUENCE, \code{0x0009} MP\_OUT\_OF\_BOUNDS). The following PIV-specific codes occupy the \code{0x1000}-\code{0x10FF} range:
+\emph{MpSizeTotal} \textbf{SHALL} specify the number of requested data bytes,
+not the original object length. Its value \textbf{SHALL} remain unchanged
+throughout the transfer. \emph{MpOffset} identifies the first byte of this
+fragment within the requested data. The first fragment \textbf{SHALL} have
+\emph{MpOffset} zero, regardless of Offset in the command. Each subsequent
+fragment \textbf{SHALL} start immediately after the preceding fragment.
+\emph{MpFragmentSize} \textbf{SHALL} equal the number of data bytes in that reply.
+
+Fragment boundaries may occur anywhere within the requested data, including
+within a tag or length field. The PD \textbf{SHALL NOT} add or repeat TLV headers
+for individual fragments. The ACU reconstructs the requested data by joining
+the fragments in order. Reply identifiers, multi-part fields, and OSDP packet
+headers and trailers are not part of that data and are not counted in
+\emph{MpSizeTotal} or \emph{MpFragmentSize}.
+
+For example, a request for \code{0x0104} bytes starting at Offset \code{0x0100}
+produces \emph{MpSizeTotal} \code{0x0104}. With \code{0x0072} data bytes per
+reply, the three fragments have \emph{MpOffset} values \code{0x0000},
+\code{0x0072}, and \code{0x00E4}, and sizes \code{0x0072}, \code{0x0072},
+and \code{0x0020}.
+
+For an empty success, the PD \textbf{SHALL} return one \texttt{osdp\_PIVGETDATAR}
+with all three multi-part fields zero and no data bytes.
+The ACU \textbf{SHALL} interpret this first reply as successful completion
+with an empty result. For PIVGETDATAR, the early-termination indication
+applies only when \emph{MpSizeTotal} is nonzero.
+For a nonempty result, delivery completes when the distinct accepted fragment lengths
+sum to \emph{MpSizeTotal}. Normal OSDP retransmission rules apply: replaying a
+reply does not advance the data offset or execute the card operation again.
+The ACU \textbf{SHALL} discard partial data on cancellation or the OSDP~3.0
+early-termination indication (zero fragment size and offset at or beyond total).
+That indication is not successful completion of a nonempty transfer.
+
+\subsection{PIV Error Codes}\label{sec:new-piv-error-codes}
+
+PD error codes are carried in \texttt{osdp\_PIVERROR} using two-byte codes
+(least-significant byte first). The common PD codes remain available:
+\code{0x0001} (smart-card error),
+\code{0x0002} (smart-card timeout), \code{0x0004} (required TLV missing),
+\code{0x0005} (invalid parameter), \code{0x0006} (secure channel required),
+\code{0x0007} (invalid multi-part transfer),
+\code{0x0008} (multi-part fragment out of sequence), and
+\code{0x0009} (multi-part fragment out of bounds).
+The following PIV-specific codes occupy the \code{0x1000}-\code{0x10FF} range:
 
 \begin{ValueDescriptionTable}{Enhanced PIV Error Codes}{Code}
   \ValueDescriptionRow{0x1020}{Function not supported by credential (PD capability gaps \textbf{SHALL} use \texttt{osdp\_NAK} function-not-supported).}
@@ -70,14 +299,33 @@ PD error codes are carried in \texttt{osdp\_PDERROR} using two-byte codes (least
   \ValueDescriptionRow{0x1023}{Credential security status not satisfied.}
   \ValueDescriptionRow{0x1024}{Data object or tag not found.}
   \ValueDescriptionRow{0x1025}{VCI not established.}
-  \ValueDescriptionRow{0x1027}{Credential not present or removed.}
+  \ValueDescriptionRow{0x1026}{Credential not present or removed.}
+  \ValueDescriptionRow{0x1027}{Ambiguous element selection: more than one direct child matches the requested tag.}
+  \ValueDescriptionRow{0x1028}{Malformed credential-object encoding encountered during element extraction.}
+  \ValueDescriptionRow{0x1029}{Selected response exceeds the supported transfer length.}
 \end{ValueDescriptionTable}
 
-\subsubsection{PD Application Error Reply (osdp\_PDERROR)}
+The assignments are tentative. Unlisted codes remain unassigned by this proposal.
 
-PDs \textbf{SHALL} use \texttt{osdp\_PDERROR} only for credential-side or other global application errors that are not already defined in a command-specific reply. The error code is two bytes, encoded least-significant byte first. When a card/APDU failure occurs (for example SC\_ERROR or a PIV APDU failure), the PD \textbf{MAY} append the ISO/IEC~7816 status word (SW1\textbar SW2) when it is available to the application layer; otherwise the status word is omitted. A single error is reported per \texttt{osdp\_PDERROR} reply. Transport-level faults (framing, CRC, sequence) continue to use \texttt{osdp\_NAK}.
+\subsubsection{PIV Error Reply (osdp\_PIVERROR)}\label{sec:piverror}
 
-\input{tables/osdp-pderror}
+The PD \textbf{SHALL} use \texttt{osdp\_PIVERROR} for errors in PIV operations
+that are not reported by a command-specific result. Each reply contains one
+two-byte error code, least-significant byte first. The originating command
+defines when the error is returned; PIVGETDATA errors are returned on a later poll.
+Transport faults continue to use \texttt{osdp\_NAK}.
+This reply replaces the name \texttt{osdp\_PDERROR}; its tentative byte value
+\code{0x8A} and payload structure are unchanged.
+
+\input{tables/osdp-piverror}
+
+When a credential command returns the failure being reported, the PD \textbf{SHALL}
+include that command's status word in SW1, SW2 order. For a valid protected
+response, the PD \textbf{SHALL} use the status word inside the SM response.
+The PD \textbf{SHALL} omit the status word for failures detected locally,
+including invalid OSDP parameters, missing trust anchors, timeouts, card
+removal, and failed verification of a protected response. A success status
+from an earlier credential command \textbf{SHALL NOT} be attached to a later failure.
 
 \subsection{Updated Function Codes}
 
@@ -100,7 +348,7 @@ When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance b
   \ValueDescriptionRow{0x01}{PD presents a contact card interface (ISO~7816 or equivalent).}
   \ValueDescriptionRow{0x02}{PD presents a high-frequency contactless credential interface (13.56~MHz NFC).}
   \ValueDescriptionRow{0x04}{PD presents a low-frequency credential interface (approximately 125~kHz prox).}
-  \ValueDescriptionRow{0x08}{PD supports Virtual Contact Interface (VCI) secure messaging for applicable modes.}
+  \ValueDescriptionRow{0x08}{PD supports credential Secure Messaging and Virtual Contact Interface (VCI) for applicable interfaces and modes.}
   \ValueDescriptionRow{0x10}{PD presents a Bluetooth credential interface.}
   \ValueDescriptionRow{0x20}{PD presents a barcode credential interface.}
   \ValueDescriptionRow{0x40}{PD presents an ultra-high-frequency credential interface (UHF/RAIN RFID).}

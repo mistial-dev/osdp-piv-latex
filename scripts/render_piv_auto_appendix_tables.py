@@ -180,7 +180,7 @@ def render_profile_table(item: dict[str, object]) -> str:
         ("Tag 81 Challenge Input", hex_part("ApduChallenge", parsed_command["input"])),
         ("GENERAL AUTHENTICATE APDU", segmented_general_authenticate_apdu(str(item["general_authenticate_command_hex"]))),
         ("Dynamic Authentication Response", segmented_dynamic_auth_response(str(item["dynamic_auth_response_hex"]))),
-        ("Response Tag 82 Length", f"{item['response_82_length']} bytes"),
+        ("Response Tag 0x82 Length", f"0x{int(item['response_82_length']):04X} bytes"),
     ]
     lines = [
         rf"\begin{{SimpleTable}}{{{latex_escape(title)}}}{{2}}",

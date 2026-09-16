@@ -1,0 +1,30 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily\small,
+  box/.style={draw=OSDPBlue,rounded corners=2pt,fill=OSDPLightGray,
+    align=center,text width=8.2cm,inner sep=6pt},
+  side/.style={draw=OSDPBlue,align=center,text width=3.3cm,inner sep=5pt},
+  flow/.style={->,draw=OSDPBlue,thick}]
+\node[box] (select) at (0,0) {Select the PIV application\\Check the SELECT reply for SM support};
+\node[box] (ready) at (0,-1.5) {SM enabled, supported, and a trust anchor loaded?};
+\node[box] (sm) at (0,-3) {Read Discovery Object for PIN and pairing policy\\Establish SM: check the certificate and cryptogram};
+\node[box] (access) at (0,-5) {Check the requested operation's access requirements\\For a PIN operation, read Discovery policy if needed};
+\node[side] (done) at (-2.5,-7) {Conditions satisfied\\Perform operation};
+\node[side] (fail) at (2.5,-7) {Report failure};
+\draw[flow] (select) -- (ready);
+\draw[flow] (ready) -- node[right]{Yes} (sm);
+\draw[flow] (ready.west) -- node[above,font=\scriptsize]{No} (-5.4,-1.5)
+  -- (-5.4,-5) -- (access.west);
+\draw[flow] (sm) -- node[right,align=left,font=\scriptsize]{SM established, or\\required trust anchor missing} (access);
+\draw[flow] (sm.east) -- (5.4,-3) -- (5.4,-7) -- (fail.east);
+\node[align=center,font=\scriptsize,text width=1.8cm,fill=white,inner sep=1pt]
+  at (5.4,-4) {Security check\\failed, or\\SM error};
+\draw[flow] (access.south) -- (0,-5.8) -- (-2.5,-5.8) -- (done.north);
+\draw[flow] (access.south) -- (0,-5.8) -- (2.5,-5.8) -- (fail.north)
+  node[midway,right,font=\scriptsize]{Conditions unmet};
+\end{tikzpicture}
+\caption{How the PD prepares a credential. The PD establishes SM when enabled and
+supported, using a loaded trust anchor. The credential's access rules determine which
+operations can proceed. Contactless PIN verification requires VCI.}
+\label{fig:sm-preparation}
+\end{figure}

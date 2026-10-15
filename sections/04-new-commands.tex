@@ -42,22 +42,78 @@ The \texttt{osdp\_PIVSELECT} command (command code \code{0xB0}, tentative) instr
 
 \input{tables/osdp-pivselect}
 
+The \emph{Data Model} field uses the same identifiers as a
+\texttt{osdp\_PIVMODE} Configuration Entry: \code{0x01} PIV, \code{0x02} TWIC,
+and \code{0x03} CAC. Values \code{0x04}-\code{0x7F} are reserved;
+\code{0x80}-\code{0xFF} are private-use models supported by agreement between
+the ACU and PD. \code{0x00} is invalid. The ACU supplies the model and AID
+together; a matching \texttt{osdp\_PIVMODE} Configuration Entry is not required.
+The command retains the current interface and mode-wide security settings.
+The model does not override the credential's access conditions.
+The payload is exactly four fixed bytes, including \emph{CMND}, followed by
+\emph{AID Length} bytes, for a total of \code{0x09}-\code{0x14} bytes.
+This layout replaces the earlier draft without a Data Model byte; PDs
+\textbf{SHALL NOT} interpret that earlier layout as this command.
+
 The PD \textbf{SHALL} issue \texttt{SELECT} with \texttt{CLA = 0x00},
 \texttt{INS = 0xA4}, \texttt{P1 = 0x04}, \texttt{P2 = 0x00},
 \texttt{Lc = AID Length}, \texttt{Data = AID}, and \texttt{Le = 0x00}.
 The PD \textbf{SHALL} request the normal application property template over the interface selected
 by the current PIV mode. A selection within an established SM context follows
 the shared transport rules in Subsection~\ref{sec:credential-sm-flow}.
-When the credential selects a different application, the PD \textbf{SHALL} clear the
+When a successful selection changes the application or Data Model, the PD \textbf{SHALL} clear the
 previous application's SM session, VCI status, pairing code, cached PIN,
 PIN-verification status, and application information. This prevents the PD from
 carrying security state from one application into another.
 Selecting the PIV application when a credential is first presented preserves a PIN
-collected before presentation. Selecting the same PIV application again preserves
+collected before presentation. Selecting the same PIV application again with the same Data Model preserves
 its SM session and PIN-verification status. If the credential rejects SELECT, the PD
 keeps the current application and its state.
 
-The \emph{AID Length} field \textbf{SHALL} be in the ISO/IEC~7816 application identifier range of 5 to 16 bytes. If the payload is malformed, the AID length is outside that range, or any reserved selection flag is nonzero, the PD \textbf{SHALL} report \texttt{osdp\_PIVERROR} \code{0x0005} (invalid parameter). A successful selection is acknowledged with \texttt{osdp\_ACK}; after success, subsequent PIV commands operate against the selected application until the credential is removed, a new \texttt{osdp\_PIVSELECT} succeeds, or \texttt{osdp\_PIVMODE} changes the operating context. The PD \textbf{SHALL} update the selected AID reported by \texttt{osdp\_CARDSTATUSR}; if the credential returns an FCI template containing tag \code{0x4F}, that value \textbf{SHALL} be reported, otherwise the PD \textbf{SHALL} report the requested AID.
+The \emph{AID Length} field \textbf{SHALL} be in the ISO/IEC~7816 application
+identifier range of 5 to 16 bytes. If the payload is malformed, its size is not
+exactly \code{0x04} plus AID Length, the AID length is outside that range,
+the Data Model is zero, reserved, or unsupported by the PD, or any reserved
+selection flag is nonzero, the PD \textbf{SHALL} report
+\texttt{osdp\_PIVERROR} \code{0x0005} (invalid parameter) without issuing SELECT
+to the credential. A successful selection is acknowledged with \texttt{osdp\_ACK}.
+Only after success, the PD \textbf{SHALL} commit the selected Data Model and AID
+as one operating context. Subsequent commands use that context until credential
+removal, another successful selection, or a mode change. A rejected command or
+credential SELECT \textbf{SHALL NOT} change the previous context.
+The PD \textbf{SHALL} update the selected AID reported by
+\texttt{osdp\_CARDSTATUSR}; if the credential returns an FCI template containing
+tag \code{0x4F}, that value \textbf{SHALL} be reported, otherwise the PD
+\textbf{SHALL} report the requested AID. The ACK and CARDSTATUSR layouts are unchanged.
+
+On a TWIC credential, the PIV and TWIC applications have distinct AIDs. The ACU
+determines the intended application through system configuration, using an
+\texttt{osdp\_PIVMODE} configuration entry or \texttt{osdp\_PIVSELECT}.
+For \texttt{osdp\_PIVSELECT}, the ACU supplies Data Model \code{0x01} with
+the PIV AID, or Data Model \code{0x02} with the TWIC AID; \code{0x02}
+covers both Legacy and NextGen TWIC applications.
+The PD \textbf{SHALL} apply the data model and access conditions of the selected
+application to subsequent commands. Selecting the PIV application invokes normal
+PIV processing, including PIN, SM, and VCI requirements where applicable.
+Biometric data access through the TWIC application does not require the PIV PIN;
+deciphering its encrypted biometric data requires the appropriate TPK.
+
+\paragraph{Informative selection examples}
+The following hexadecimal command payloads omit OSDP framing and Secure Channel
+for readability. The bytes are CMND, Selection Flags, Data Model, AID Length,
+then AID; neither example depends on a matching PIVMODE profile.
+\begin{itemize}
+  \item Select the PIV application, including the PIV application on a TWIC:\par
+    \texttt{B0 00 01 0B A0 00 00 03 08 00 00 10 00 01 00}.
+  \item Select the TWIC application using its common nine-byte AID prefix:\par
+    \texttt{B0 00 02 09 A0 00 00 03 67 20 00 00 01}.
+\end{itemize}
+After ACK, CARDSTATUSR reports the selected AID. A full TWIC AID ending in
+\texttt{01 01} identifies Legacy; \texttt{01 03} identifies NextGen.
+If only the requested prefix is available, it does not identify the generation;
+the ACU \textbf{SHALL NOT} infer NextGen facial support from that prefix alone.
+These AID distinctions are specified in \emph{TWIC Specification, Part~2},
+Section~4.1 and Appendix~C.
 
 If the PD does not implement the command, the PD \textbf{SHALL} return
 \texttt{osdp\_NAK} function-not-supported. Credential-side failures
@@ -241,7 +297,7 @@ the operation without an automatic retry. The ACU may then perform setup and
 start a new SPE operation.
 
 The ACU \textbf{SHALL} disable PIV Auto before arming SPE Auto Execute. A request
-to arm SPE while PIV Auto is enabled receives \texttt{osdp\_NAK} \code{0x09}
+to arm SPE Auto Execute while PIV Auto is enabled receives \texttt{osdp\_NAK} \code{0x09}
 (unable to process command). This ensures that only one operation starts credential
 preparation and PIN verification when the credential is presented.
 
@@ -285,7 +341,78 @@ This operation can proceed with SM established and VCI absent;
 pairing and VCI are required only when the credential's access conditions
 require them. Other biometric operations use established SM when present.
 
-Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, where applicable (e.g., TWIC contactless), to have a valid privacy key loaded via \texttt{osdp\_PIVLOADTPK}. On-card flows require the credential to support OCC. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Credential-side match outcomes (for example PIN verification required or credential removal during operation) \textbf{SHALL} be reported in the subsequent \texttt{osdp\_PIVBIOMATCHR} result code per Table~\ref{tab:pivbiomatch-results}. Conditions that prevent the command from being attempted (for example unsupported credential function, missing VCI when required, or invalid command parameters) \textbf{MAY} be reported via \texttt{osdp\_PIVERROR} on a subsequent \texttt{osdp\_POLL}.
+Controllers set \emph{Match Mode} to select off-card or on-card comparison. Off-card flows require the PD to retrieve the appropriate template and, for encrypted TWIC biometric data on either contact or contactless, to have the appropriate TPK available. The ACU can supply the key using \texttt{osdp\_PIVLOADTPK}. For a biometric operation against the TWIC application, if a required TPK is missing or incorrect, the PD \textbf{SHALL} report \texttt{osdp\_PIVBIOMATCHR} Result \code{0x07} (Invalid TPK). TPK failures \textbf{SHALL NOT} be reported as PIN-verification failures. On-card flows require the credential to support OCC. If the PD does not implement the command, it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Credential-side match outcomes (for example PIN verification required or credential removal during operation) \textbf{SHALL} be reported in the subsequent \texttt{osdp\_PIVBIOMATCHR} result code per Table~\ref{tab:pivbiomatch-results}. Conditions that prevent the command from being attempted (for example unsupported credential function, missing VCI when required, or invalid command parameters) \textbf{MAY} be reported via \texttt{osdp\_PIVERROR} on a subsequent \texttt{osdp\_POLL}.
+
+\paragraph{TWIC off-card workflows}
+The following application-specific workflows follow \emph{TWIC Specification,
+Part~2}, Sections~4.1, 4.2, 4.6.4, and 4.7.3, and \emph{Part~3},
+Sections~4.4.5--4.4.8 and~7. They use off-card comparison
+(\emph{Match Mode} \code{0x00}); the documented TWIC cards do not implement
+OCC or PIV credential SM/VCI. Selecting a PIV application on a TWIC therefore
+does not make contactless PIN-protected facial retrieval available.
+The ACU \textbf{SHALL} verify the PD's advertised modality support before
+requesting a fingerprint (\emph{Biometric Type} \code{0x01}) or facial
+(\code{0x02}) comparison.
+
+\begin{enumerate}
+  \item \textbf{Legacy TWIC fingerprint.} Select the TWIC application with
+    Data Model \code{0x02}. Obtain the credential's TPK from its magnetic stripe,
+    its contact-interface key container, or the PACS record for that credential.
+    If the ACU supplies the key, load it with \texttt{osdp\_PIVLOADTPK} before
+    requesting off-card fingerprint comparison. The PD reads object
+    \code{DFC103} and deciphers its tag \code{0xBC} value using the TPK.
+    No PIV PIN is required for this TWIC-application operation.
+  \item \textbf{Legacy TWIC facial.} The Legacy TWIC application contains no
+    facial image object. For direct card retrieval, use the contact interface,
+    select the PIV application with Data Model \code{0x01}, and verify the PIV
+    application PIN using \texttt{osdp\_PIVSPE} before requesting off-card facial
+    comparison. The reference is PIV object \code{5FC108}; it is not encrypted
+    with the TPK. If PIN verification has not been completed, the existing
+    PIN-verification-required result applies, not Invalid TPK. Alternatively,
+    the PACS can use a reference image collected during registration and indexed
+    by the verified credential identifier. That backend workflow does not imply
+    that PIVBIOMATCH accepts a backend image payload. The contact-only/PIN
+    requirement is stated in Part~3, Section~4.4.7, footnote~37; registration is
+    described in \emph{Part~4}, Section~2.5.1.
+  \item \textbf{NextGen TWIC fingerprint.} Select the TWIC application with
+    Data Model \code{0x02}. Obtain the TPK from the PDF417 barcode, the
+    contact-interface key container, or the credential's PACS record. Load the
+    key when supplied by the ACU, then request off-card fingerprint comparison
+    using object \code{DFC103} and its encrypted tag \code{0xBC} value.
+    This workflow requires no PIV PIN.
+  \item \textbf{NextGen TWIC facial.} Select the TWIC application with Data
+    Model \code{0x02}, obtain the TPK as above, and request off-card facial
+    comparison using object \code{DFC108}. The PD deciphers tag \code{0xBC}
+    using the TPK; no PIV PIN is required. Automated comparison by a
+    facial-capable PD uses PIVBIOMATCH/PIVBIOMATCHR. Operator picture
+    verification instead retrieves, verifies, and displays the reference image
+    under TWIC Part~3, Section~4.4.7; PIVBIOMATCH does not return that image.
+\end{enumerate}
+
+The TPK is not readable from the credential over contactless. A Legacy magnetic
+stripe encodes the 16-byte key as 32 hexadecimal characters; the ACU decodes
+those characters before LOADTPK. A barcode or key-container read likewise
+supplies only the raw key value to LOADTPK. Loading a correctly sized key
+does not prove that it belongs to the presented credential. A cleared or expired
+cache without another valid key source is a missing TPK for a TWIC comparison.
+The existing cache timeout and clear-on-removal flag remain applicable.
+
+Before accepting TWIC biometric authentication, the system \textbf{SHALL}
+verify the decrypted CBEFF record's signature and authorized document-signer
+trust, and bind its signed FASC-N to the identifier verified through the CHUID
+or active card authentication for the same credential, as required by the selected
+TWIC reader mode. These checks are separate from TPK decryption and live-sample
+comparison. A signature or identifier-binding failure \textbf{SHALL NOT} be
+accepted merely because decryption or matching succeeded. An integrity failure
+alone does not establish that the TPK was incorrect. The ACU retains
+responsibility for the access decision and the checks assigned to it by the
+deployment; BIOMATCH success alone does not assert completed TWIC authentication.
+
+For modes requiring active card authentication, Legacy TWIC uses its PIV
+application's card-authentication key, whereas NextGen provides a key in the
+TWIC application. An application switch clears the previous application's
+security state, so any subsequent PIV PIN verification must apply to the
+newly selected PIV context.
 
 \subsection{PIV Biometric Match Reply (osdp\_PIVBIOMATCHR)}
 
@@ -294,6 +421,12 @@ After \texttt{osdp\_PIVBIOMATCH} completes, the PD reports the result as a poll 
 \input{tables/osdp-pivbiomatchr}
 
 When \emph{Result} is \code{0x00} (off-card match success), the PD \textbf{SHALL} include the 32-byte SHA-256 hash of the biometric template tag \code{0xBC} data field in the reply. For on-card match success (\emph{Result} \code{0x09}) and for all failure result codes, the PD \textbf{SHALL} omit the hash field; ACUs \textbf{SHALL NOT} rely on a hash received alongside any result other than \code{0x00}.
+
+The hash input is the tag \code{0xBC} value as read from the credential,
+excluding its tag and length bytes. For the encrypted TWIC objects, this is
+the ciphertext, not the decrypted CBEFF record or a derived live-sample template.
+Decryption supplies the reference used for comparison; it does not change the
+reply's hash input.
 
 Off-card biometric comparison demonstrates only that the live sample matched template data presented to the PD. Because off-card biometric objects can be copied or duplicated, an off-card biometric match does not by itself prove authenticity of the credential. On-card biometric comparison is a credential-controlled assertion; the biometric object may be attacker controlled and the PD does not receive the template data being matched. To obtain cryptographic proof associated with an on-card biometric success, the ACU \textbf{SHALL} perform an additional authentication using an appropriately verified credential key after the successful on-card comparison.
 
@@ -305,7 +438,15 @@ The \texttt{osdp\_PIVLOADTPK} command (command code \code{0xAC}, tentative) inst
 
 \input{tables/osdp-loadtpk}
 
-Controllers set \emph{Cache Timeout} to define how long (in seconds) the PD may retain the key. A value of \code{0x00} clears any cached TPK immediately. Values \code{0x01}-\code{0xFF} allow caching for up to 255 seconds. Bit~0 of \emph{Control Flags} directs the PD to clear the cached TPK when the credential is removed; all other bits are reserved and \textbf{SHALL} be transmitted as zero. If the PD does not support TWIC TPK caching it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Invalid payloads (for example reserved bits set) \textbf{SHALL} elicit \texttt{osdp\_PIVERROR} \code{0x0005} (invalid parameter).
+The \emph{TPK} field \textbf{SHALL} contain exactly 16 bytes of raw AES-128 key
+material, as specified in \emph{TWIC Specification, Part~2}, Section~4.6.2.
+It carries only the key value, excluding TLV tags and lengths, the algorithm
+identifier, the key index, and any hexadecimal text encoding. The command payload,
+including \emph{CMND}, \emph{Cache Timeout}, and \emph{Control Flags}, is exactly
+\code{0x13} bytes. The TWIC key container permits up to 32 bytes for future
+algorithms; that capacity does not change this command's 16-byte key-field length.
+
+Controllers set \emph{Cache Timeout} to define how long (in seconds) the PD may retain the key. A value of \code{0x00} clears any cached TPK immediately; the 16-byte \emph{TPK} field remains present but is ignored. Values \code{0x01}-\code{0xFF} allow caching for up to 255 seconds. Bit~0 of \emph{Control Flags} directs the PD to clear the cached TPK when the credential is removed; all other bits are reserved and \textbf{SHALL} be transmitted as zero. If the PD does not support TWIC TPK caching it \textbf{SHALL} return \texttt{osdp\_NAK} function-not-supported. Invalid payloads (including an incorrect TPK field length or reserved bits set) \textbf{SHALL} elicit \texttt{osdp\_PIVERROR} \code{0x0005} (invalid parameter).
 
 \subsection{PIV VCI Pairing Code Transmit (osdp\_PIVXMITPAIRING)}
 
@@ -384,28 +525,129 @@ Interface Mask. Each configuration appears as a TLV:
 
 The configuration count \textbf{SHALL} equal the number of complete Configuration Entry
 TLVs in the reassembled payload. Consequently, \emph{MpSizeTotal} \textbf{SHALL} be at
-least eight bytes when PIV Auto is disabled and at least 48 bytes when it is enabled, and
+least eight bytes when PIV Auto is disabled and at least 49 bytes when it is enabled, and
 \textbf{SHALL} equal the exact encoded length of the required header, any conditional PIV
-Auto fields, and all configuration TLVs. Truncated fields, trailing bytes, or a count that
-does not match the TLV sequence \textbf{SHALL} be treated as malformed configuration data.
+Auto fields, all configuration TLVs, and any Resume TLV. Tags and lengths in this list
+are one byte each. The optional Resume TLV does not contribute to the configuration count.
+Truncated fields, unknown tags, trailing bytes, or a count that does not match the
+Configuration Entry sequence \textbf{SHALL} be treated as malformed configuration data.
 
 \begin{itemize}
   \item \textbf{Global Interface Mask (required)} — One-byte mask (no tag) that limits the interfaces the PD may use for all configurations (see Table~\ref{tab:pivmode-interfaces}). A value of \code{0x00} indicates no global restriction; reserved bits \textbf{SHALL} be zero.
-  \item \textbf{Configuration Entry (Tag \code{0x01})} — Contains the data-model identifier, a per-entry interface mask, the AID length, and the optional AID:
+  \item \textbf{Configuration Entry (Tag \code{0x01})} — Contains the following fields in order:
     \begin{itemize}
       \item \emph{Data Model} (\code{0x01} PIV, \code{0x02} TWIC, \code{0x03} CAC, values \code{0x04}-\code{0x7F} reserved, \code{0x80}-\code{0xFF} private use). CAC entries use the same interface and AID encoding as PIV and TWIC entries.
       \item \emph{Interface Mask} — Uses the same bit positions as the global mask (Table~\ref{tab:pivmode-interfaces}) and \textbf{SHALL NOT} assert interfaces excluded by the Global Interface Mask. A value of \code{0x00} means “any interface permitted by the global mask.”
       \item \emph{AID Length} (0-16) and \emph{AID} bytes when provided.
+      \item \emph{Authentication Key Reference} — One trailing byte present if and only if
+        PIV Auto is enabled. For Data Model \code{0x01}, the permitted values are
+        \code{0x9A} (PIV Authentication) and \code{0x9E} (asymmetric Card Authentication).
+        For Data Model \code{0x02}, the permitted value is \code{0x9E} (TWIC active card
+        authentication). CAC and private-use Auto profiles are not defined here and
+        \textbf{SHALL NOT} be accepted as this Auto profile. Non-Auto entries are unchanged.
     \end{itemize}
 \end{itemize}
 
-PDs process configuration entries in order, applying the global mask (when present) before honouring each entry’s mask. Invalid masks, unknown data-model identifiers, or malformed TLVs \textbf{SHALL} result in \texttt{osdp\_PIVERROR} \code{0x0005} (invalid parameter). Controllers \textbf{SHALL} send the command over a secure channel where required; the PD \textbf{SHALL} return \texttt{osdp\_PIVERROR} \code{0x0006} (secure channel required) if the necessary security conditions are not satisfied. Multi-part framing errors result in \texttt{osdp\_PIVERROR} \code{0x0007} (invalid multi-part transfer). If the PD cannot cache the requested configuration set, it \textbf{SHALL} respond with \texttt{osdp\_PIVERROR} \code{0x1021} (insufficient PD memory or storage).
+The Configuration Entry value length \textbf{SHALL} be exactly \code{0x03} plus AID
+Length without Auto, or \code{0x04} plus AID Length with Auto. The key reference belongs
+to that entry; there is no configured algorithm byte and no implicit key default.
+The earlier Auto entry layout without the key reference \textbf{SHALL} be rejected,
+not guessed or interpreted as selecting \code{0x9E}.
+
+PDs process configuration entries in order, applying the global mask before honouring each
+entry's mask. Once an application has been selected for an Auto attempt, failure of discovery,
+a security prerequisite, or authentication \textbf{SHALL NOT} cause selection of another
+entry, key, or interface. Invalid masks, unknown data-model identifiers, unsupported Auto
+models, invalid key references, or
+malformed TLVs return \texttt{osdp\_PIVERROR} \code{0x0005}; unmet channel requirements
+return \code{0x0006}; multi-part framing errors return \code{0x0007}; insufficient
+configuration storage returns \code{0x1021}. The PD \textbf{SHALL} validate the complete
+reassembled command before replacing a configuration or clearing its credential context.
+Rejected configuration preserves the installed configuration and valid security state.
+The final fragment receives \texttt{osdp\_ACK} only after complete validation and acceptance;
+credential work for the newly accepted Auto attempt begins after that ACK.
+
+\paragraph{Per-credential algorithm discovery}\label{sec:pivauto-key-discovery}
+For each Auto attempt, the PD \textbf{SHALL} retrieve the certificate corresponding to the
+configured key in the authentication application: object \code{5FC105} for PIV \code{0x9A},
+or \code{5FC101} for asymmetric \code{0x9E}. TWIC \code{DFC101} is a TPK container,
+not an authentication certificate. The PD \textbf{SHALL} extract certificate tag \code{0x70}
+and its single CertInfo byte in tag \code{0x71}: \code{0x00} denotes uncompressed DER;
+\code{0x01} denotes GZIP-compressed DER. Missing, duplicated, or invalid required fields,
+failed decompression, and malformed DER certificate data produce PIVSTATUS Result
+\code{0x03}. The PD \textbf{SHALL} discover the algorithm from the certificate's
+\emph{subjectPublicKeyInfo}, following SP~800-73-5 Part~1, Appendix~C.1, using the subject
+RSA modulus size or named EC curve, not the issuer's certificate-signature algorithm.
+It \textbf{SHALL NOT} reuse another credential's algorithm or send trial authentication
+commands to probe algorithms.
+RSA profiles require \texttt{rsaEncryption} SubjectPublicKeyInfo; EC profiles require
+\texttt{id-ecPublicKey} with the named P-256 or P-384 curve. Other subject-key profiles,
+including RSA-PSS-restricted keys, \textbf{SHALL} produce Result \code{0x04}, not a
+guessed algorithm or a different signature encoding.
+
+\begin{SimpleTable}{PIV Auto Subject Public-Key Profiles}{4}
+  {|L{0.34\SimpleUsableWidth}|K{0.16\SimpleUsableWidth}|L{0.27\SimpleUsableWidth}|K{0.23\SimpleUsableWidth}|}
+  {\TableHeaderCell{Subject public key} & \TableHeaderCell{Algorithm} & \TableHeaderCell{Digest profile} & \TableHeaderCell{Digest bytes}}
+  \label{tab:pivauto-profiles}
+  RSA-2048 & \code{0x07} & SHA-256 & \code{0x20} \\\hline
+  RSA-3072 & \code{0x05} & SHA-384 & \code{0x30} \\\hline
+  EC named curve P-256 & \code{0x11} & SHA-256 & \code{0x20} \\\hline
+  EC named curve P-384 & \code{0x14} & SHA-384 & \code{0x30} \\\hline
+\end{SimpleTable}
+
+This table fixes this proposal's Auto digest choice, independently of the issuer's signature.
+A missing or malformed certificate produces Result \code{0x03}; an unsupported subject-key
+algorithm, size, curve, or Auto profile produces Result \code{0x04}. Neither permits another
+key or symmetric authentication as fallback. The PD reports the discovered PIV identifier
+when one can be determined, and \code{0x00} otherwise. No GENERAL AUTHENTICATE is sent until
+discovery succeeds. The PD verifies the returned key proof with this certificate's public
+key; the ACU retains certificate-path, validity, revocation, identity-binding,
+algorithm-acceptance, and access-decision responsibilities. PD success does not prove trust.
+
+\paragraph{TWIC Auto application routing}\label{sec:pivauto-twic}
+For a TWIC entry with AID Length zero, the PD \textbf{SHALL} select the common nine-byte
+prefix \code{A00000036720000001}; a supplied AID is honoured instead. Full selected AIDs
+\code{A000000367200000010103} and \code{A000000367200000010101} identify NextGen and
+Legacy, respectively. A prefix, absent certificate, or failed authentication \textbf{SHALL NOT}
+be treated as evidence of Legacy. The PD \textbf{SHALL} obtain positive full-AID generation
+evidence from the SELECT response; unavailable evidence produces Result \code{0x03}, and
+an unsupported generation produces Result \code{0x04}, without guessing.
+For NextGen, the PD \textbf{SHALL} read the certificate and perform \code{0x9E} authentication
+in the TWIC application. Only for positively identified Legacy TWIC, it \textbf{SHALL}
+select the credential's PIV application and use its asymmetric \code{0x9E} key and
+\code{5FC101} certificate. This is the configured TWIC route, not failure-driven fallback.
+Before that Legacy transition, the PD \textbf{SHALL} read the TWIC CHUID and retain its
+identity only for this attempt, then bind it to the PIV application's certificate below.
+The configured entry and TWIC authentication purpose remain unchanged; the actual selected
+application's access and state-clearing rules apply. CARDSTATUSR reports the actual selected
+AID. These routes follow TWIC Part~2, Sections~4.1, 4.4.2, 4.7.1, and~7.5.
+
+For NextGen TWIC GET DATA, the PD \textbf{SHALL} use \texttt{Le = 0xFF}, not absent Le or
+\code{0x00}, and retrieve the complete object using GET RESPONSE as specified in TWIC
+Part~2, Section~5.2 and Appendix~E. Authentication command and response chaining follow
+Section~5.3 and Appendix~E. A partial Dynamic Authentication Template is not success.
+The PD \textbf{SHALL} obtain FASC-N and UUID/GUID from CHUID object \code{5FC102}, tags
+\code{0x30} and \code{0x34}. PIV and NextGen TWIC success require a nonzero UUID. For a
+positively identified Legacy TWIC only, an actually retrieved 16-byte nil GUID is permitted
+when a well-formed, nonzero 25-byte FASC-N matches the FASC-N in the authentication
+certificate's subjectAltName. An absent or unreadable GUID \textbf{SHALL NOT} be fabricated
+as nil. The PD and ACU \textbf{SHALL} enforce this Legacy binding; the ACU permits the
+exception only for its configured TWIC purpose. TWIC Part~2, Sections~4.3 and~6, define
+the relevant identity representations.
+
+TWIC Auto success reports a certificate-associated key proof, not completed TSA reader
+authentication, CCL checking, biometric comparison, or TSA reader conformance. In particular,
+TWIC Part~3, Section~4.4.4, specifies a random or pseudorandom challenge of at least 127 bytes.
+The 32- or 48-byte KMAC digest and RSA encoding here are not claimed to establish that
+separate requirement; deployments requiring it need the corresponding TWIC authentication
+profile and qualification.
 
 When PIV Auto is enabled, the PD prepares the presented credential as described
 in Subsection~\ref{sec:credential-sm-flow}, derives the challenge, issues PIV
 \texttt{GENERAL AUTHENTICATE}, and reports completion through
 \texttt{osdp\_PIVSTATUS}. The PD \textbf{SHALL} use the configured key,
-algorithm, and selected interface for that attempt. If SM is unavailable, the
+the algorithm discovered from that credential's role certificate, and the selected interface
+for that attempt. If SM is unavailable, the
 PD continues that same authentication only when the credential's access rules permit
 the authentication without SM, as for key \code{0x9E}. If the configured
 authentication requires SM, the PD reports the SM failure. A failed signature
@@ -421,15 +663,72 @@ If the selected authentication requires VCI and pairing is required, the PD
 completes with Result \code{0x05}, Detail \code{0x01} (pairing code required).
 The ACU can then begin commanded pairing. Required PIN verification that has
 not been completed returns Result \code{0x05}, Detail \code{0x02} (PIN verification
-required). PIV Auto performs one attempt per presentation. Keeping the same
-credential presented does not restart the attempt. Removal and a new
-presentation, or successful reapplication of \texttt{osdp\_PIVMODE}, starts a new
-attempt. Reapplication follows the mode-change clearing rules; loading a trust
-anchor alone does not restart authentication.
+required). PIV Auto performs one automatic attempt per presentation, subject to counter
+availability. Keeping the credential presented does not restart the attempt. After a terminal
+prerequisite failure is delivered, the ACU may complete commanded pairing and PIVSPE PIN
+verification while Auto remains enabled, then explicitly resume as defined below. SPE Auto
+Execute remains prohibited while PIV Auto is enabled. Removal and a new presentation, or
+ordinary PIVMODE reapplication, starts a new attempt when counters are available. Ordinary
+reapplication follows mode-change clearing; loading an anchor alone does not restart Auto.
 
 PIV Auto configuration \textbf{SHALL} be accepted only when OSDP Secure Channel~2.0 is active and the channel is not using a factory/default SCBK or other factory key material. A PD \textbf{SHALL} reject PIV Auto configuration or execution with \texttt{osdp\_PIVERROR} \code{0x0006} (secure channel required) when these preconditions are not met.
 
-When bit \code{0x01} of \emph{PIV Mode Flags} enables PIV Auto, the configuration \textbf{SHALL} specify a \emph{Series Counter}, a \emph{Sequence Counter}, and a 32-byte \emph{Supplemental Entropy} field. The supplemental entropy field is fixed width and \textbf{SHALL} always be present; all zeroes are permitted for compatibility but are not recommended. The ACU \textbf{SHALL} ensure that a series counter value does not repeat for the same PD and that no sequence counter value is issued more than once within a series. One conforming implementation strategy is to maintain a monotonic series counter that increments at every ACU boot, similar to the SNMP engine boots counter, and a monotonic sequence counter for challenges issued within that boot series.
+\paragraph{Counter ownership and exhaustion}\label{sec:pivauto-counters}
+Ordinary Auto PIVMODE supplies a Series, an initial Sequence, and fixed-width 32-byte
+Supplemental Entropy. All-zero entropy is permitted but not recommended. The ACU
+\textbf{SHALL} allocate a fresh Series for every ordinary Auto configuration and prevent
+its reuse for the same PD across ACU or PD restart. Within that Series, the PD
+\textbf{SHALL} reserve the next unused Sequence before every attempt, including presentation
+preparation and accepted Resume. The supplied initial Sequence is used first; each reservation
+advances the allocator by one. Failure, cancellation, timeout, and removal do not release a
+reservation; removal does not reset the allocator. PIVSTATUS reports the reserved pair even
+if no challenge was generated. No new attempt starts while another operation or undelivered
+completion is pending.
+
+Sequence \code{0xFFFFFFFF} may be reserved once. That attempt may finish normally; afterward
+Auto is suspended until ordinary PIVMODE installs a fresh Series with normal clearing.
+The PD \textbf{SHALL NOT} wrap, start another Auto attempt, or issue further Auto credential
+commands or repeated exhaustion statuses. The terminal status carrying \code{0xFFFFFFFF}
+informs the ACU to install a fresh Series before another attempt. Resume cannot change Series
+to avoid that clearing rule.
+
+\paragraph{Explicit prerequisite continuation}\label{sec:pivauto-resume}
+An optional Resume TLV is \code{02 08}, followed by the previous terminal PIVSTATUS Series
+and Sequence, four bytes each, least-significant byte first. It \textbf{SHALL} occur once,
+after all Configuration Entry TLVs, and only with Auto enabled. Its presence requests Resume;
+absence retains ordinary PIVMODE clearing. It is transient metadata, not installed
+configuration. Header Series \textbf{SHALL} equal the installed Series; header Sequence
+\textbf{SHALL} equal its exact next unused value. Supplemental Entropy may change; flags,
+global mask, count, entry order, models, entry masks, AIDs, and key references \textbf{SHALL}
+otherwise match the installed configuration exactly.
+
+Resume requires complete delivery of a terminal PIVSTATUS \code{0x05}/\code{0x01} or
+\code{0x05}/\code{0x02} whose counter pair matches the TLV, with the same continuously present
+credential, selected application, interface, configured entry, and OSDP session. The PD
+\textbf{SHALL} recheck these conditions after reassembly and before acceptance. Removal,
+credential reset, context-changing selection, ordinary mode replacement, an active anchor
+change invalidating SM, blocked SM, or OSDP session replacement invalidates continuation.
+Delivering the final fragment of an old status after context loss \textbf{SHALL NOT} restore
+eligibility. Successful commanded pairing, PIN verification, permitted reads, and diagnostics
+preserve eligibility.
+
+Acceptance \textbf{SHALL} atomically consume prior eligibility and reserve the supplied pair,
+then ACK before credential work. It preserves completed pairing, SM/VCI, PIN verification,
+and any otherwise valid completed PIN cache. The PD \textbf{SHALL NOT} select another entry,
+change interface or key, submit VERIFY automatically, or retry authentication automatically.
+The accepted attempt returns exactly one polled PIVSTATUS. A still-missing prerequisite
+returns \code{0x05}/\code{0x01} or \code{0x05}/\code{0x02} with the newly reserved pair.
+Removal after acceptance returns Result \code{0x01}; SM failure follows existing blocked-state
+rules.
+
+Before acceptance, malformed Resume, changed configuration, invalid counters, or exhaustion
+return PIVERROR \code{0x0005}; unmet channel requirements return \code{0x0006}; an absent
+credential returns \code{0x1026}; stale or invalidated context returns \code{0x1023}; another
+operation or undelivered completion returns NAK \code{0x09} (busy). Rejection starts no attempt
+and consumes no counters or valid security state. Normal OSDP retransmission of the same
+authenticated command bytes in the same session and OSDP sequence context replays the cached
+ACK or completion without another reservation or card operation. The same logical Resume
+sent with a new OSDP sequence is a new request and cannot reuse consumed eligibility.
 
 The PIV Auto challenge \textbf{SHALL} be derived from the active Secure
 Channel~2.0 session key material using two KMAC256 operations. First, the PD
@@ -438,15 +737,35 @@ derives a 32-byte PIV Auto KDK with key material formed by concatenating
 32 bytes; and customization string \code{OSDP-PIV-AUTO-KDK-v1}. Second, the PD
 derives the challenge digest using the PIV Auto KDK as the KMAC key, the
 fixed-width template as input data, output length \code{L}, and customization
-string \code{OSDP-PIV-AUTO-CHALLENGE-v1}. The fixed-width template
-\textbf{SHALL} contain the series counter, sequence counter, credential
-FASC-N, credential UUID, challenged PIV key reference, PIV algorithm
-identifier, and the 32-byte supplemental entropy field. A successful PIV Auto
-transaction \textbf{SHALL} include the credential UUID; if the UUID cannot be
-read, the PD \textbf{SHALL} report PIV Auto failure instead of deriving a
-success challenge with an all-zero UUID. The output length \code{L} is 32 bytes
-for SHA-256 profiles and 48 bytes for SHA-384 profiles. PIV Auto challenge
-derivation \textbf{SHALL NOT} use static factory keys.
+string \code{OSDP-PIV-AUTO-CHALLENGE-v1}. The template \textbf{SHALL} be exactly
+\code{0x61} bytes in Table~\ref{tab:pivauto-challenge} order, with no implicit padding or
+length prefixes. Output length \code{L} and digest profile follow
+Table~\ref{tab:pivauto-profiles}. UUID/GUID \textbf{SHALL} have been read successfully;
+only the positive Legacy TWIC exception above permits nil. PIV Auto challenge derivation
+\textbf{SHALL NOT} use static factory keys. This serialization does not redefine the
+Secure Channel~2.0 key-binding requirement; its independent validation remains separate.
+
+\begin{SimpleTable}{Normative PIV Auto KMAC Challenge Template}{3}
+  {|L{0.34\SimpleUsableWidth}|K{0.16\SimpleUsableWidth}|L{0.50\SimpleUsableWidth}|}
+  {\TableHeaderCell{Field, in order} & \TableHeaderCell{Bytes} & \TableHeaderCell{Encoding}}
+  \label{tab:pivauto-challenge}
+  Template label and version & \code{0x0E} & ASCII \code{OSDP-PIV-AUTO}, followed by byte \code{0x01}. \\\hline
+  Series Counter & \code{0x04} & Reserved Series, least-significant byte first. \\\hline
+  Sequence Counter & \code{0x04} & Reserved Sequence, least-significant byte first. \\\hline
+  FASC-N & \code{0x19} & Raw credential bytes. \\\hline
+  UUID/GUID & \code{0x10} & Raw credential bytes, including an allowed actual Legacy nil GUID. \\\hline
+  Authentication Key Reference & \code{0x01} & Configured key reference for this attempt. \\\hline
+  Algorithm Identifier & \code{0x01} & Discovered subject-key identifier. \\\hline
+  Supplemental Entropy & \code{0x20} & Exact configured or resumed 32-byte value. \\\hline
+\end{SimpleTable}
+
+For RSA, the PD \textbf{SHALL} encode the KMAC digest with EMSA-PKCS1-v1\_5, the profile's
+SHA-256 or SHA-384 DigestInfo, and a block matching the discovered modulus length. The KMAC
+output is already the message hash and \textbf{SHALL NOT} be hashed again. For EC,
+it \textbf{SHALL} submit the 32- or 48-byte digest directly, without rehashing.
+GENERAL AUTHENTICATE uses discovered P1, configured key reference P2, and tag \code{0x7C}
+containing empty \code{0x82} and \code{0x81} carrying the encoded input. The returned
+\code{0x7C} template is preserved whole, excluding transport status words.
 
 \subsection{PIV Auto Status Reply (osdp\_PIVSTATUS)}
 
@@ -478,13 +797,21 @@ The PD returns one terminal PIVSTATUS, with no follow-up PIVERROR for that attem
 \input{tables/osdp-pivstatusr-results}
 
 For failure before challenge generation, the PD \textbf{SHALL} report the
-configured series and sequence counters and requested key reference and
-algorithm. It \textbf{SHALL} set unavailable FASC-N and UUID fields to zero and
+reserved series and sequence counters and configured key reference. It reports the
+discovered algorithm identifier, or \code{0x00} if none could be determined.
+It \textbf{SHALL} set unavailable FASC-N and UUID fields to zero and
 \emph{Signed Response Length} to zero. These identity fields describe data
 actually obtained from the credential. The PD \textbf{SHALL} set \emph{Detail}
 to zero unless the result defines a detail value.
 
-The reply reports the exact series and sequence counters used for the challenge, the FASC-N and UUID read from the credential, and the signed response returned by the credential. The ACU uses these fields to verify counter uniqueness, bind the response to the credential identity, and validate the signature and certificate path using ACU trust policy. A success result \textbf{SHALL} include a nonzero credential UUID. The PD \textbf{SHALL} preserve the credential's signed response bytes as returned by the PIV operation, excluding transport status words such as SW1/SW2.
+The reply reports the exact reserved counters, credential identity, and returned signed
+response. The ACU \textbf{SHALL} check the key reference against its configured authentication
+purpose, independently discover the algorithm from the role certificate, and reject a
+mismatching reported algorithm. It verifies counter uniqueness, identity binding, the proof,
+and certificate path under its trust policy. Success \textbf{SHALL} include a nonzero UUID,
+except for the bound Legacy TWIC case in Subsection~\ref{sec:pivauto-twic}. The PD
+\textbf{SHALL} preserve returned proof bytes, excluding transport status words.
+PIVSTATUS's wire layout is unchanged by key discovery and Resume.
 
 If the complete signed response does not fit in one OSDP response, the PD
 \textbf{SHALL} fragment \code{osdp_PIVSTATUS} using the OSDP~3.0

@@ -2,6 +2,15 @@
 \addcontentsline{toc}{section}{Changelog}
 
 \begin{description}
+\item[2026-10-14] Added a key-reference byte to each PIV Auto profile. The PD reads the
+card's certificate to choose the algorithm, so the same profile can handle RSA and ECC
+cards. Added a resume option after pairing or PIN entry, defined counter handling and
+the challenge format, and updated the appendix with PIV and Legacy/NextGen TWIC examples.
+\item[2026-10-07] Added ``Invalid TPK'' for missing or incorrect TWIC Privacy Keys and
+corrected the TPK field to 16 bytes. Clarified PIV/TWIC application selection and added
+a Data Model byte to PIVSELECT. Updated the Legacy/NextGen fingerprint and facial workflows
+and the BIOMATCH hash description. Clarified CRAUTH cleanup so each new request starts a
+fresh transaction while the previous reply remains available for retransmission.
 \item[2026-09-16] Changes from OSDP 2.2:
 \begin{itemize}
   \item Renamed \texttt{osdp\_PIVDATA}/\texttt{osdp\_PIVDATAR} to \texttt{osdp\_PIVGETDATA}/\texttt{osdp\_PIVGETDATAR}, retaining command code \code{0xA3}. Added identifier and tag lengths, two-byte offsets and requested lengths, and whole-object or unique direct-child selection with the original tag and length bytes preserved. Defined OSDP 3.0 multi-part delivery and an all-zero first reply for empty success. Command data length distinguishes the new request from the fixed-length OSDP 2.2 form.

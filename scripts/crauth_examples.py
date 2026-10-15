@@ -27,6 +27,7 @@ class Peripheral:
     def __init__(self, expected, response, failure=None, fail_after_data=False):
         self.expected, self.response = expected, response
         self.failure, self.fail_after_data = failure, fail_after_data
+        self.pending_error = None
         self.data = bytearray()
         self.total = None
         self.ready = False
@@ -34,6 +35,14 @@ class Peripheral:
         self.credential_calls = 0
         self.last_packet = self.last_reply = None
         self.last_sequence = None
+
+    def reset_transaction(self):
+        """Clear operation state without losing the link retransmission cache."""
+        self.data.clear()
+        self.total = None
+        self.ready = False
+        self.offset = 0
+        self.pending_error = None
 
     def exchange(self, packet):
         address, sequence, payload = decode_frame(packet)
@@ -50,9 +59,7 @@ class Peripheral:
 
     def command(self, payload):
         if payload == b"\xa2":
-            self.data.clear()
-            self.total, self.ready = None, False
-            self.offset = 0
+            self.reset_transaction()
             return b"\x40"
         if payload[:1] == b"\xa5":
             if self.ready:
@@ -63,8 +70,7 @@ class Peripheral:
             if (count != len(payload) - 7 or offset != len(self.data)
                     or total < 3 or offset + count > total
                     or self.total not in (None, total)):
-                self.data.clear()
-                self.total = None
+                self.reset_transaction()
                 return b"\x41\x09"
             if self.total is None and request_format(payload[7:]) != "3.0":
                 return b"\x41\x09"
@@ -73,20 +79,23 @@ class Peripheral:
             if len(self.data) == total:
                 self.ready = True
                 if bytes(self.data) != self.expected:
-                    self.failure = bytes.fromhex("8A0500")
+                    self.pending_error = bytes.fromhex("8A0500")
                 else:
                     self.credential_calls += 1
             return b"\x40"
         if payload == b"\x60":
             if not self.ready:
                 return b"\x40"
-            if self.failure and (not self.fail_after_data or self.offset):
-                self.ready = False
-                return self.failure
+            error = self.pending_error
+            if error is None and self.failure and (not self.fail_after_data or self.offset):
+                error = self.failure
+            if error is not None:
+                self.reset_transaction()
+                return error
             reply = multipart(0x82, self.response, self.offset, 40)
             self.offset += len(reply) - 7
             if self.offset == len(self.response):
-                self.ready = False
+                self.reset_transaction()
             return reply
         return b"\x41\x03"
 

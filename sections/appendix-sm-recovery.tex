@@ -43,8 +43,12 @@ command. An error ends this recovery sequence. These are commanded operations
 after the automatic attempt has ended. The PD
 returns each command's defined reply; the sequence generates no second PIV Auto
 result. PIVMODE remains configured for the next credential presentation.
-Reapplying PIVMODE after pairing or PIN verification would clear the state
-needed for the commanded authentication.
+An ordinary PIVMODE replacement after pairing or PIN verification clears the state
+needed for the commanded authentication. Alternatively, after the completed
+pairing/PIN prerequisite failure, an eligible PIVMODE carrying the explicit Resume
+TLV can preserve that context and start one new Auto attempt with the exact next
+unused sequence counter. Subsection~\ref{sec:pivauto-resume} defines this distinct
+operation; the illustrative resume bytes appear in the autonomous-template appendix.
 
 If SM or VCI is unsupported, the ACU chooses a supported interface or
 authentication method explicitly, or rejects the transaction. If a signature

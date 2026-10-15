@@ -1,9 +1,16 @@
 \section{High-Speed Autonomous PIV Data Templates (Informative)}
 
-This appendix records the PIV Auto challenge, ISO/IEC~7816
-\texttt{GENERAL AUTHENTICATE} templates, and fixture sources used by the
-demonstration vectors. The APDU examples are validated by the repository tests
-against the same helper code used by the simulator and replay tools.
+This appendix illustrates the per-entry authentication key selector, per-card
+certificate discovery, and explicit resumption of PIV Auto. The configuration,
+discovery, resume, and TWIC sequences added in this revision are illustrative;
+they have not been executed or used to regenerate cryptographic vectors.
+The normative rules are in Subsections~\ref{sec:pivauto-key-discovery},
+\ref{sec:pivauto-twic}, and~\ref{sec:pivauto-resume}.
+
+The existing APDU fixtures and generated signing examples are retained separately.
+Their prototype KDK input uses the SC1-style 48-byte session-key set and does not
+establish Secure Channel~2.0 interoperability. SC2 remains a required upstream
+dependency; its transport and final PIV Auto binding are outside these examples.
 
 \subsection{Vector Sources}
 \begin{SimpleTable}{PIV Auto Vector Sources}{3}
@@ -14,6 +21,148 @@ against the same helper code used by the simulator and replay tools.
   GSA FICAM card-builder & Local keys and certificates & Used only as reusable local test material for source-backed simulation. \\\hline
   Generated YubiKey PIV & Missing algorithm profiles & Reusable RSA-1024, RSA-3072, and P-384 test keys are committed as public fixtures and loaded through \code{ykman piv}; RSA-1024 is informative legacy test material only. \\\hline
 \end{SimpleTable}
+
+\subsection{Key Selection and Certificate Discovery}
+
+An Auto-enabled Configuration Entry ends with one Authentication Key Reference
+byte, after the AID bytes. There is no configured algorithm byte. With Auto
+disabled, the key-reference byte is absent and the previous entry encoding is
+unchanged. For example, the default PIV application with contact and contactless
+permitted is \HexBytes{01040103009E}: tag \code{0x01}, length \code{0x04},
+Data Model \code{0x01}, Interface Mask \code{0x03}, AID Length \code{0x00},
+and key \code{0x9E}. Changing only the last byte to \code{0x9A} selects PIV
+Authentication without fixing the card's key type.
+
+The logical configuration begins with three header bytes, two four-byte counters,
+and 32 entropy bytes. The shortest Auto-enabled configuration is therefore
+\code{0x31} bytes (49 decimal), including its one six-byte Configuration Entry.
+Configuration Count counts Configuration Entry TLVs only.
+
+\begin{SimpleTable}{Illustrative PIV Auto Configuration and Resume Bytes}{3}
+  {|L{0.25\SimpleUsableWidth}|L{0.27\SimpleUsableWidth}|K{0.48\SimpleUsableWidth}|}
+  {\TableHeaderCell{Message} & \TableHeaderCell{Field} & \TableHeaderCell{Bytes}}
+  Card Authentication & Flags, Count, Global Mask, Series, Sequence & \HexBytes{010103070000002A000000} \\\hline
+  Card Authentication & Supplemental Entropy & \HexBytes{0000000000000000000000000000000000000000000000000000000000000000} \\\hline
+  Card Authentication & Configuration Entry & \HexBytes{01040103009E} \\\hline
+  Contactless PIV Authentication & Flags, Count, Global Mask, Series, Sequence & \HexBytes{030102070000002A000000} \\\hline
+  Contactless PIV Authentication & Supplemental Entropy & \HexBytes{0000000000000000000000000000000000000000000000000000000000000000} \\\hline
+  Contactless PIV Authentication & Configuration Entry & \HexBytes{01040102009A} \\\hline
+  Resume after pairing and PIN & Flags, Count, Global Mask, Series, Sequence & \HexBytes{030102070000002B000000} \\\hline
+  Resume after pairing and PIN & Supplemental Entropy & \HexBytes{0000000000000000000000000000000000000000000000000000000000000000} \\\hline
+  Resume after pairing and PIN & Unchanged Configuration Entry & \HexBytes{01040102009A} \\\hline
+  Resume after pairing and PIN & Final Resume TLV & \HexBytes{0208070000002A000000} \\\hline
+\end{SimpleTable}
+
+Concatenate the rows belonging to one message. The two initial logical payloads
+are \code{0x31} bytes; the resume payload is \code{0x3B} bytes. For a single
+fragment, prefix the initial payload with \HexBytes{AE310000003100}, or the
+resume payload with \HexBytes{AE3B0000003B00}. These prefixes contain CMND,
+MpSizeTotal, MpOffset, and MpFragmentSize. OSDP packet headers and SC2 protection
+are not shown. All-zero entropy is permitted but not recommended for deployment.
+
+\begin{SimpleTable}{Illustrative Authentication Certificate Reads}{3}
+  {|L{0.18\SimpleUsableWidth}|K{0.44\SimpleUsableWidth}|L{0.38\SimpleUsableWidth}|}
+  {\TableHeaderCell{Configured Key} & \TableHeaderCell{Logical Card APDU} & \TableHeaderCell{Certificate Object}}
+  PIV \code{0x9A} & \HexBytes{00CB3FFF055C035FC10500} & \code{0x5FC105}; contactless requires VCI. \\\hline
+  PIV \code{0x9E} & \HexBytes{00CB3FFF055C035FC10100} & \code{0x5FC101}; no PIV PIN required. \\\hline
+  NextGen TWIC \code{0x9E} & \HexBytes{00CB3FFF055C035FC101FF} & \code{0x5FC101} in the selected TWIC application. \\\hline
+\end{SimpleTable}
+
+These are logical APDUs; an established credential SM session protects applicable
+PIV commands. The PD reassembles the returned certificate object, extracts tag
+\code{0x70}, and interprets its one-byte CertInfo in tag \code{0x71}:
+\code{0x00} identifies uncompressed DER and \code{0x01} identifies GZIP-compressed
+DER. It decompresses when indicated before parsing SubjectPublicKeyInfo.
+Missing or malformed certificate evidence ends the attempt with Result
+\code{0x03}; a recognized but unsupported subject-key profile uses Result
+\code{0x04}. Before an algorithm is determined, PIVSTATUS reports Algorithm
+Identifier \code{0x00}; that failure value never selects a default card algorithm.
+
+\begin{SimpleTable}{Mixed PIV Subject Keys under the Same Configuration}{4}
+  {|L{0.27\SimpleUsableWidth}|L{0.23\SimpleUsableWidth}|K{0.18\SimpleUsableWidth}|L{0.32\SimpleUsableWidth}|}
+  {\TableHeaderCell{Subject Public Key} & \TableHeaderCell{Configured Key} & \TableHeaderCell{Discovered Algorithm} & \TableHeaderCell{Challenge Profile}}
+  RSA-2048 & \code{0x9A} or \code{0x9E} & \code{0x07} & 32-byte digest; SHA-256 DigestInfo. \\\hline
+  RSA-3072 & \code{0x9A} or \code{0x9E} & \code{0x05} & 48-byte digest; SHA-384 DigestInfo. \\\hline
+  Named curve P-256 & \code{0x9A} or \code{0x9E} & \code{0x11} & 32-byte prehashed ECDSA input. \\\hline
+  Named curve P-384 & \code{0x9A} or \code{0x9E} & \code{0x14} & 48-byte prehashed ECDSA input. \\\hline
+\end{SimpleTable}
+
+The four subject-key types at each of the two references give eight PIV profiles.
+Within either reference, successive RSA and ECC cards use identical configuration
+bytes. The certificate changes the GENERAL AUTHENTICATE P1 byte, challenge
+encoding, and reported algorithm. For example, an RSA CA can sign a P-384
+subject certificate using SHA-256: the PD still discovers \code{0x14} and uses
+the 48-byte P-384 profile. The issuer's signature algorithm does not select the
+card's authentication algorithm. No alternate key is tried if discovery fails.
+
+\subsection{Illustrative PIV Authentication Resume}
+
+In the contactless \code{0x9A} example above, attempt \code{0x00000007}/
+\code{0x0000002A} ends with Result \code{0x05}, Detail \code{0x01} because
+pairing is required. The ACU receives the complete result, then sends
+\texttt{osdp\_PIVXMITPAIRING}, for example
+\HexBytes{AD3132333435363738}, and waits for confirmed VCI establishment.
+It requests commanded PIN acquisition and verification with
+\HexBytes{AA010000000000}: Mode \code{0x01}, default finite timeouts,
+Auto Execute clear, and Cache Validity zero. The ACU waits for the successful
+PIVSPER before sending the resume PIVMODE payload above.
+
+The final \HexBytes{0208070000002A000000} identifies the completed prerequisite
+failure, not the counters of the new attempt. The header retains Series
+\code{0x00000007} and supplies its exact next unused Sequence
+\code{0x0000002B}. Configuration Count remains one. The entropy may change;
+the flags, masks, ordered entries, AIDs, and key references remain unchanged.
+For this eligible resume, completed pairing and PIN verification remain bound
+to the same presentation, application, interface, and security contexts.
+
+The PD reads certificate \code{0x5FC105}, discovers its subject-key profile,
+and performs one new key proof. Pairing or PIN completion alone does not restart
+Auto. Credential removal, a context change, or an interrupted security session
+invalidates resumption; an ordinary mode replacement still clears state.
+Duplicate OSDP delivery does not repeat pairing, PIN verification, or the proof.
+
+\subsection{Illustrative TWIC Auto Key Proof}
+
+The TWIC Configuration Entry \HexBytes{010D020209A000000367200000019E} selects
+Data Model \code{0x02}, contactless interface, the nine-byte TWIC AID prefix,
+and asymmetric key \code{0x9E}. It does not configure an algorithm or a TPK.
+The PD issues \HexBytes{00A4040009A0000003672000000100} and examines the full
+AID returned in tag \code{0x4F}:
+\begin{itemize}
+  \item \textbf{Legacy:} \HexBytes{A000000367200000010101}. Read the TWIC
+    CHUID with \HexBytes{00CB3FFF055C035FC102FF}, retaining its identity only
+    for this attempt. Then select the PIV application with
+    \HexBytes{00A404000BA00000030800001000010000} and retrieve certificate
+    \code{0x5FC101}. Use that application's \code{0x9E} key while retaining
+    the configured TWIC acceptance policy. A present, correctly sized nil GUID
+    remains zero in the challenge and PIVSTATUS only when the valid nonzero
+    FASC-N matches the Card Authentication certificate. Missing identity data
+    does not receive the nil-GUID exception.
+  \item \textbf{NextGen:} \HexBytes{A000000367200000010103}. Remain in the
+    TWIC application, read CHUID \code{0x5FC102} and certificate
+    \code{0x5FC101} using Le \code{0xFF}, and retain the populated GUID.
+    Concatenate the initial data and subsequent GET RESPONSE data when status
+    \code{0x61XX} indicates more bytes. Le \code{0x00} can return
+    \code{0x9000} with no data and is not a successful certificate read.
+\end{itemize}
+
+The documented NextGen profile uses RSA-2048: discover \code{0x07} from the
+certificate SPKI and use GENERAL AUTHENTICATE with P1 \code{0x07} and P2
+\code{0x9E}. Neither workflow submits a PIV PIN or uses the TPK for this proof.
+The Legacy application transition preserves the card-authentication purpose;
+it does not authorize fallback from PIV Authentication \code{0x9A} to
+Card Authentication \code{0x9E}. A TWIC-model \code{0x9A} entry is invalid.
+
+These new TWIC examples contain no captured card responses or newly computed
+signatures. Implementation fixtures must use public synthetic keys, certificates,
+and invented identifiers, with their provenance kept separate from physical-card
+captures. PIVSTATUS success reports the OSDP-defined key proof, not completion
+of a TSA reader mode or an access decision. Certificate trust, identity binding,
+expiration, and applicable cancellation checks remain required by deployment
+policy. TWIC Part~3, Section~4.4.4 requires at least 127 bytes of unique challenge
+data; these illustrative examples do not establish that fixed RSA padding and a
+shorter KMAC digest satisfy that requirement. TSA reader qualification remains
+a separate verification item.
 
 \subsection{Supported Profiles}
 \begin{SimpleTable}{PIV Auto Supported Profiles}{5}
@@ -31,18 +180,21 @@ against the same helper code used by the simulator and replay tools.
   {|L{0.23\SimpleUsableWidth}|L{0.10\SimpleUsableWidth}|L{0.21\SimpleUsableWidth}|L{0.46\SimpleUsableWidth}|}
   {\TableHeaderCell{Field} & \TableHeaderCell{Size} & \TableHeaderCell{Encoding} & \TableHeaderCell{Notes}}
   Template label & 0x0E & ASCII plus version byte & \code{OSDP-PIV-AUTO} followed by \ApduChallenge{01}. \\\hline
-  Series Counter & 0x04 & LSB first & ACU-managed boot or epoch counter, for example \ApduChallenge{07000000}. \\\hline
-  Sequence Counter & 0x04 & LSB first & ACU-managed per-series counter, for example \ApduChallenge{2A000000}. \\\hline
+  Series Counter & 0x04 & LSB first & ACU-provided series, for example \ApduChallenge{07000000}. \\\hline
+  Sequence Counter & 0x04 & LSB first & PD-allocated attempt counter within that series, for example \ApduChallenge{2A000000}; see Subsection~\ref{sec:pivauto-counters}. \\\hline
   FASC-N & 0x19 & Raw bytes & Credential FASC-N from CHUID. \\\hline
-  UUID & 0x10 & Raw bytes & Credential UUID. Successful PIV Auto examples use the credential UUID; unavailable UUID is a failure condition. \\\hline
+  UUID & 0x10 & Raw bytes & Credential UUID; the recognized Legacy TWIC nil-GUID exception follows Subsection~\ref{sec:pivauto-twic}. Unavailable UUID otherwise causes failure. \\\hline
   PIV Key Reference & 0x01 & Raw byte & Challenged key reference, normally \ApduHeader{9A} or \ApduHeader{9E}. \\\hline
-  PIV Algorithm & 0x01 & Raw byte & Algorithm identifier: \ApduHeader{05}, \ApduHeader{06}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14}. \\\hline
-  Supplemental Entropy & 0x20 & Raw bytes & Fixed-width ACU entropy field; all zeroes are valid for test vectors only. \\\hline
+  PIV Algorithm & 0x01 & Raw byte & Discovered supported identifier: \ApduHeader{05}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14}; \ApduHeader{06} remains informative legacy test material only. \\\hline
+  Supplemental Entropy & 0x20 & Raw bytes & Fixed-width ACU entropy field; all zeroes are permitted but not recommended. \\\hline
 \end{SimpleTable}
 
-The challenge digest is produced in two steps. First, derive
+The fixed-width encoding and profile mapping are normative in
+Tables~\ref{tab:pivauto-challenge} and~\ref{tab:pivauto-profiles}; this appendix
+illustrates them. The retained prototype vectors derive their KDK as
 \code{PIV-AUTO-KDK = KMAC256(key = S-ENC || S-MAC1 || S-MAC2, data = empty, mac\_len = 32, custom = "OSDP-PIV-AUTO-KDK-v1")}.
-Second, derive the challenge as
+This is SC1-style prototype input, not evidence of an SC2 key binding.
+The challenge stage is
 \code{KMAC256(key = PIV-AUTO-KDK, data = fixed-width template, mac\_len = L, custom = "OSDP-PIV-AUTO-CHALLENGE-v1")}.
 \code{L} is 32 bytes for SHA-256 profiles and 48 bytes for SHA-384 profiles.
 The supplemental entropy field is always present and fixed at 32 bytes; all
@@ -102,8 +254,8 @@ zeroes are valid for test vectors but not recommended for deployments.
   {\TableHeaderCell{Field} & \TableHeaderCell{Encoding} & \TableHeaderCell{Source} & \TableHeaderCell{Notes}}
   CLA & \ApduHeader{00} & ISO/IEC 7816-4 & Logical command before credential SM wrapping. Apply SP~800-73-5 Part~2, Section~4.2, when SM is established. \\\hline
   INS & \ApduHeader{87} & ISO/IEC 7816-4 & GENERAL AUTHENTICATE instruction. \\\hline
-  P1 & Algorithm ID & PIV profile & \ApduHeader{05}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14} for supported PIV Auto profiles; \ApduHeader{06} appears only in informative RSA-1024 legacy examples. \\\hline
-  P2 & Key Reference & PIV profile & \ApduHeader{9A} or \ApduHeader{9E} for PIV Auto. \\\hline
+  P1 & Algorithm ID & Certificate SPKI & \ApduHeader{05}, \ApduHeader{07}, \ApduHeader{11}, or \ApduHeader{14} for supported PIV Auto profiles; \ApduHeader{06} appears only in informative RSA-1024 legacy examples. \\\hline
+  P2 & Key Reference & Configuration Entry & \ApduHeader{9A} or \ApduHeader{9E} for PIV; \ApduHeader{9E} for TWIC Auto. \\\hline
   Lc & Short or extended & Command length & Short APDUs use one length byte; extended APDUs use \ApduLength{00} followed by two length bytes. \\\hline
   Command data & \ApduTemplate{7C...}\ApduResponse{8200}\ApduTemplate{81...}\ApduChallenge{...} & Dynamic Authentication Template & Tag \ApduResponse{82} is empty to request a response; tag \ApduTemplate{81} carries the exact challenge input. \\\hline
   Le & \ApduLength{00} & Response request & Requests the maximum response supported by the card interface. \\\hline
@@ -115,7 +267,7 @@ zeroes are valid for test vectors but not recommended for deployments.
   Complete response & \ApduTemplate{7C...}\ApduResponse{82...}\ApduStatus{9000} & Strip only the ISO status word. & Carry the complete \ApduTemplate{7C} Dynamic Authentication Template in \texttt{osdp\_CRAUTHR} or \texttt{osdp\_PIVSTATUS}. \\\hline
   Additional response bytes & \ApduStatus{61XX} & Issue GET RESPONSE with Le \ApduLength{XX}. & Concatenate returned data before reporting the final \ApduTemplate{7C} template. \\\hline
   GET RESPONSE command & \ApduHeader{00C00000}\ApduLength{XX} & Retrieve remaining card response bytes. & Not exposed directly to the ACU. \\\hline
-  Credential error & \ApduStatus{69..} or \ApduStatus{6A..} & Preserve command failure detail. & Report via \texttt{osdp\_PIVERROR} when available; do not treat as a valid signed response. \\\hline
+  Credential error & \ApduStatus{69..} or \ApduStatus{6A..} & Preserve command failure detail. & Auto reports terminal PIVSTATUS Result \code{0x06} with the applicable status word; commanded CRAUTH uses PIVERROR. \\\hline
 \end{SimpleTable}
 
 \begin{SimpleTable}{PIV Auto APDU Reference: OPACITY / VCI Context}{4}

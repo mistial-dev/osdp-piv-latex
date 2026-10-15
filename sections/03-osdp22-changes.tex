@@ -83,6 +83,15 @@ repeat the same reply without repeating the credential operation.
 Command rejection and transport faults continue to use the applicable
 OSDP NAK rules.
 
+After returning the final \texttt{osdp\_CRAUTHR} fragment or a terminal
+\texttt{osdp\_PIVERROR}, the PD \textbf{SHALL} end the operation and clear its
+assembled request, request length, response offset, pending error, and completion
+state. The PD \textbf{SHALL} then accept a new \texttt{osdp\_CRAUTH} beginning at
+offset zero. Clearing the completed operation \textbf{SHALL NOT} invalidate the
+cached OSDP reply required for link-layer retransmission. A retransmission replays
+that reply without advancing the response offset or repeating the credential
+operation.
+
 \paragraph{Reply structure}\mbox{}\\
 \texttt{osdp\_CRAUTHR} \textbf{SHALL} return the credential’s full ISO/IEC~7816
 \code{GENERAL AUTHENTICATE} response payload, including the Dynamic

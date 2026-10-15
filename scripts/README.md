@@ -2,6 +2,19 @@
 
 This folder contains small helper tools used to generate and check the VCI trust-anchor examples in the proposal.
 
+## PIVSELECT and checker regression tests
+
+`pivselect_examples.py` is a bounded, synthetic model of the explicit Data Model
+byte, request validation, and atomic selected-context updates. It requires no
+matching PIVMODE profile. It is not a device driver or hardware-conformance test.
+`test_pivselect.py` checks the printed payloads and state-preservation rules.
+
+The CRAUTH tests exercise consecutive transactions, terminal-error recovery,
+ABORT, and final-reply retransmission without repeating credential execution.
+The PIVGETDATA checker raises `ValueError` on validation failure, including when
+Python optimization is enabled. Its subprocess tests cover normal Python,
+`-O`, and `PYTHONOPTIMIZE=1`. Run all of these with `make test`.
+
 ## Captured SM/VCI packet examples
 
 From the repository root, run `make sm-vci-examples` to replay the existing

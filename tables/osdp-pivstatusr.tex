@@ -6,12 +6,12 @@
   \PacketRow{0x02}{MpFragmentSize}{Length of the status payload bytes in this fragment, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{0x01}{Result}{Result of the PIV Auto authentication attempt. See Table~\ref{tab:pivstatusr-results}.}{0x00-0xFF}
   \PacketRow{0x01}{Detail}{Result-specific detail from Table~\ref{tab:pivstatusr-results}. Set to \code{0x00} where no detail is defined.}{0x00-0xFF}
-  \PacketRow{0x04}{Series Counter}{Series counter value used to derive the challenge, least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
-  \PacketRow{0x04}{Sequence Counter}{Sequence counter value used to derive the challenge, least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
+  \PacketRow{0x04}{Series Counter}{Reserved Series, even on failure before challenge generation. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
+  \PacketRow{0x04}{Sequence Counter}{Reserved Sequence; also binds an eligible Resume. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
   \PacketRow{0x19}{FASC-N}{FASC-N read from the credential.}{200-bit FASC-N}
-  \PacketRow{0x10}{UUID}{Credential UUID read from the credential. Success replies \textbf{SHALL} carry a nonzero UUID; failure replies may transmit all zeroes when the UUID is unavailable.}{0x10 octets}
-  \PacketRow{0x01}{Key Reference}{PIV key reference challenged by the PD.}{For example 0x9E}
-  \PacketRow{0x01}{Algorithm Identifier}{PIV GENERAL AUTHENTICATE algorithm identifier.}{For example 0x07}
+  \PacketRow{0x10}{UUID}{Credential UUID/GUID. Success is nonzero except for the positively identified, FASC-N-bound Legacy TWIC exception. Failure may report zero when unavailable.}{0x10 octets}
+  \PacketRow{0x01}{Key Reference}{Configured authentication key reference, including failure before challenge generation.}{0x9A or 0x9E}
+  \PacketRow{0x01}{Algorithm Identifier}{Discovered GENERAL AUTHENTICATE identifier; \code{0x00} on failure when none could be determined. Never configured by the ACU.}{For example 0x07}
   \PacketRow{0x02}{Signed Response Length}{Total length of the signed response, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{0x00-n}{Signed Response}{Complete response bytes returned by the credential. This field is part of the reassembled status payload.}{Variable}
   \PacketRow{0x00 or 0x02}{Status Word}{SW1 followed by SW2 when the credential returned the reported failure. Omitted in the other cases specified below. Part of the reassembled payload.}{-}

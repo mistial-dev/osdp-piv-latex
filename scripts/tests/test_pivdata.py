@@ -1,8 +1,13 @@
 """Wire, selection and transaction tests for the proposed PIVGETDATA revision."""
 
+import ast
+import binascii
+import copy
 import json
+import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -264,8 +269,62 @@ class WireTests(unittest.TestCase):
                 directory = Path(temporary)
                 (directory / "manifest.json").write_text(manifest)
                 (directory / "examples.json").write_text(json.dumps(examples))
-                with self.assertRaises(AssertionError, msg=mutation):
+                with self.assertRaises(ValueError, msg=mutation):
                     check(directory)
+
+    def test_checker_has_no_optimization_sensitive_assertions(self):
+        path = Path(__file__).resolve().parents[1] / "check_pivdata_examples.py"
+        self.assertFalse(any(isinstance(node, ast.Assert) for node in ast.walk(
+            ast.parse(path.read_text()))))
+
+    def test_checker_subprocess_modes_reject_corruption(self):
+        baseline = json.loads((DIRECTORY / "examples.json").read_text())
+        manifest = (DIRECTORY / "manifest.json").read_text()
+        runner = ("from pathlib import Path; import sys; "
+                  "from check_pivdata_examples import check; "
+                  "print(f'Verified {check(Path(sys.argv[1]))} PIVGETDATA examples')")
+        for mutation in ("valid", "crc", "missing-completion", "returned-bytes", "invalid-hex"):
+            examples = copy.deepcopy(baseline)
+            exchanges = examples["cases"][0]["exchanges"]
+            row = exchanges[1]
+            if mutation == "crc":
+                damaged = bytearray.fromhex(row["reply_hex"])
+                damaged[-1] ^= 1
+                row["reply_hex"] = damaged.hex()
+            elif mutation == "missing-completion":
+                exchanges.pop()
+            elif mutation == "returned-bytes":
+                damaged = bytearray.fromhex(row["reply_hex"])
+                damaged[12] ^= 1  # First returned data byte, after frame and multipart headers.
+                damaged[-2:] = binascii.crc_hqx(damaged[:-2], 0x1D0F).to_bytes(2, "little")
+                row["reply_hex"] = damaged.hex()
+            elif mutation == "invalid-hex":
+                row["reply_hex"] = "not hexadecimal"
+            with tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                (directory / "manifest.json").write_text(manifest)
+                (directory / "examples.json").write_text(json.dumps(examples))
+                for mode in ("normal", "-O", "PYTHONOPTIMIZE"):
+                    with self.subTest(mutation=mutation, mode=mode):
+                        environment = os.environ.copy()
+                        environment.pop("PYTHONOPTIMIZE", None)
+                        environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[1])
+                        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+                        flags = ["-O"] if mode == "-O" else []
+                        if mode == "PYTHONOPTIMIZE":
+                            environment["PYTHONOPTIMIZE"] = "1"
+                        result = subprocess.run([sys.executable, *flags, "-c", runner, temporary],
+                                                env=environment, capture_output=True, text=True)
+                        if mutation == "valid":
+                            self.assertEqual(result.returncode, 0, result.stderr)
+                            self.assertIn("Verified ", result.stdout)
+                        else:
+                            self.assertNotEqual(result.returncode, 0)
+                            self.assertNotIn("Verified ", result.stdout)
+                            expected = {"crc": "CRC", "missing-completion": "missing asynchronous completion",
+                                        "returned-bytes": "oracle mismatch",
+                                        "invalid-hex": "fromhex"}[mutation]
+                            self.assertIn(expected, result.stderr)
 
     def test_committed_examples(self):
         self.assertGreater(check(), 15)

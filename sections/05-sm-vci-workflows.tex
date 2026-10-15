@@ -60,7 +60,9 @@ An empty store prevents setup. If anchors are present, the PD must still find
 one that can validate this credential's certificate, directly or through an
 intermediate certificate. Loading an anchor makes it available for the next
 attempt. To start a new attempt with a credential already present, the ACU reapplies
-PIVMODE; the mode-change clearing rules apply.
+ordinary PIVMODE with a fresh Auto Series; the mode-change clearing rules apply.
+The Resume extension in Subsection~\ref{sec:pivauto-resume} continues only an eligible
+pairing/PIN prerequisite failure and does not restart blocked SM.
 
 The credential returns its SM card-verifiable certificate (CVC) during key
 establishment. The PD \textbf{SHALL} validate that certificate using a loaded
@@ -215,9 +217,17 @@ and Mode \code{0x03} uses the selected contact interface, with SM when establish
 PIV Auto reports one result for the configured authentication attempt. The ACU
 can then request SM diagnostics, correct missing trust material, or choose
 another authentication workflow. Loading an anchor makes that anchor available
-to the PD. Reapplying PIVMODE starts a new automatic attempt and clears the
+to the PD. Reapplying ordinary PIVMODE starts a new automatic attempt and clears the
 previous PIN and SM state. The ACU \textbf{SHALL} finish trust recovery before
 pairing and PIN verification that depend on the new SM session.
+
+After complete delivery of an eligible PIVSTATUS \code{0x05}/\code{0x01} or
+\code{0x05}/\code{0x02}, the ACU may complete commanded pairing and PIN verification
+while Auto remains enabled, then send PIVMODE Resume with that status's pair and the next
+unused counters. Resume preserves completed SM, VCI, pairing, and PIN state instead of
+ordinary mode-change clearing. It performs one additional attempt with the same entry and
+key, without automatic VERIFY or authentication retry. Context loss, blocked SM, and counter
+exhaustion follow Subsection~\ref{sec:pivauto-resume}; they do not permit implicit fallback.
 
 When SM is established but the configured authentication requires unsupported
 VCI, the PD \textbf{SHALL} terminate the attempt and report

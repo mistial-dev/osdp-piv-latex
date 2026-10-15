@@ -1,6 +1,7 @@
 \begin{PacketTable}{PIV Application Select (osdp\_PIVSELECT)}
   \PacketRow{0x01}{CMND}{Command identifier.}{0xB0 (tentative)}
   \PacketRow{0x01}{Selection Flags}{Selection controls. All bits are reserved for future use and \textbf{SHALL} be transmitted as zero.}{0x00}
+  \PacketRow{0x01}{Data Model}{Data model for subsequent commands: \code{0x01} PIV, \code{0x02} TWIC, \code{0x03} CAC; \code{0x04}-\code{0x7F} reserved; \code{0x80}-\code{0xFF} private use. \code{0x00} is invalid.}{0x01-0xFF}
   \PacketRow{0x01}{AID Length}{Length of the Application Identifier.}{0x05-0x10}
   \PacketRow{0x05-0x10}{AID}{Application Identifier to select by ISO/IEC~7816 DF name.}{0x00-0xFF}
 \end{PacketTable}

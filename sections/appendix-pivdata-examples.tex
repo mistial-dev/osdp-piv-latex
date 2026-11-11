@@ -6,9 +6,9 @@ Section~\ref{sec:pivdata}, the OSDP~3.0 multi-part response defined in
 Section~\ref{sec:pivdatar}, and the error reply defined in
 Section~\ref{sec:piverror}.
 
-The ACU and PD are simulated. Credential data comes from the identified
+In the frame exchanges below, the ACU and PD are simulated. Credential data comes from the identified
 existing card captures; constructed error cases are identified separately.
-These examples omit OSDP Secure Channel for clarity. CRC detects
+These examples omit OSDP Secure Channel~3.0 for clarity. CRC detects
 transmission errors. The exchanges provide neither authentication nor
 confidentiality. Some source captures used credential-side secure messaging;
 the examples use the data recovered after that processing.
@@ -46,3 +46,48 @@ Selecting the FASC-N and UUID elements individually allows the ACU to read them
 regardless of their positions within the CHUID.
 
 \input{tables/pivdata-worked-examples}
+
+\clearpage
+\subsection{TWIC NEXGEN E-Sticker: captured write, read, and erase}
+\label{ex:twic-esticker-live}
+
+This card-command trace was captured on 2026-11-11 from a NEXGEN V8 TWIC
+using an Identiv SCR3500 C contact reader and PC/SC. The selected TWIC AID is
+\HexBytes{A000000367200000010103}. The APDUs and responses are recorded in
+\path{worked-examples/twic-esticker/trace.json}. Each response below includes
+SW1 and SW2. The initial inspection returned \HexBytes{E1006282}, an
+uninitialized E-Sticker. The verified sequence below starts with the empty
+encoding \HexBytes{E1028000} established by the first erase.
+
+\begin{enumerate}
+  \item \textbf{Select the TWIC application.}
+    Command: \HexBytes{00A4040009A00000036720000001FF}.\par
+    Response: \HexBytes{612A4F0BA00000036720000001010379074F05A00000036750124E455847454E2052454C4541534520312E307F6608020203F8020280019000}.
+  \item \textbf{Verify E1 is empty.}
+    Command: \HexBytes{00CB3FFF035C01E1FF}.\par
+    Response: \HexBytes{E10280006282}.
+  \item \textbf{Write the E-Sticker.}
+    Command: \HexBytes{00DB3FFF07E1058103414243}.\par
+    Response: \HexBytes{9000}.
+    The native E1 object contains child tag \code{0x81} with value \texttt{ABC}.
+  \item \textbf{Read back the exact object.}
+    Command: \HexBytes{00CB3FFF035C01E1FF}.\par
+    Response: \HexBytes{E10581034142436282}.
+  \item \textbf{Erase the E-Sticker.}
+    Command: \HexBytes{00DB3FFF04E1028000}.\par
+    Response: \HexBytes{9000}.
+  \item \textbf{Verify E1 is empty again.}
+    Command: \HexBytes{00CB3FFF035C01E1FF}.\par
+    Response: \HexBytes{E10280006282}.
+\end{enumerate}
+
+TWIC Part~2, Sections~5.2 and~5.4 and Appendices~E--F, define the transfers,
+short-read status, and empty E-Sticker encoding. Here Le is \code{0xFF};
+the complete objects contain fewer than 255 bytes, and each read returns
+\code{0x6282}. Under the response-length rules in
+paragraph~\ref{sec:card-response-length}, PIVGETDATA
+\HexBytes{A301E10000000000} returns the captured object bytes in
+PIVGETDATAR: \HexBytes{E1058103414243} after writing and
+\HexBytes{E1028000} after erasing. The OSDP mapping uses TWIC Data Model
+\code{0x02} and the selected TWIC application, as in the E-Sticker example in
+the PIVPUTDATA subsection.

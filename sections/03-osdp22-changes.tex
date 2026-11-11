@@ -104,6 +104,51 @@ strip outer BER-TLV tags or lengths from the returned payload.
 
 \input{tables/osdp-crauthr}
 
+\paragraph{Card response-length requests}\label{sec:card-response-length}
+For logical card commands that request response data, the PD \textbf{SHALL} use
+an explicit nonzero response length appropriate to the requested data.
+When requesting the maximum response length, the PD \textbf{SHALL} use
+\code{0xFF} for short APDUs or \code{0xFFFF} for extended APDUs, requesting up
+to 255 or 65,535 response-data bytes, respectively. Shorter nonzero lengths
+\textbf{MAY} be used. This rule applies to application selection, commanded data
+retrieval and authentication, PIV Auto, and internal biometric-object reads.
+The PD \textbf{SHALL} use the APDU format supported by the credential and encode
+Le with one byte in short format, two bytes following extended Lc, or a leading
+\code{0x00} followed by two Le bytes in a case-2 extended command.
+
+For response continuation with status \code{61 XX}, the PD \textbf{SHALL} issue
+GET RESPONSE with an explicit length bounded by \code{0xFF} and the available
+count. SW2 \code{0x00} denotes at least 256 available bytes, so the next short
+GET RESPONSE requests \code{0xFF} bytes. It \textbf{SHALL} concatenate response
+data until the operation completes. A corrected nonzero length in \code{6C XX}
+may be used within these bounds; a credential requiring the zero-encoded maximum
+is reported through the command's existing credential-failure path, with its
+status word when available. Commands completing without response data retain
+their absent Le. Credential SM wrapping follows SP~800-73-5 Part~2, including
+its outer Le and protected expected-length encoding.
+
+For TWIC \texttt{GET DATA} and its \texttt{GET RESPONSE} continuations,
+status \code{0x6282} indicates the end of available data before the requested
+Le (TWIC Part~2, Appendix~E). The PD \textbf{SHALL} retain the returned bytes,
+finish response assembly, and accept the read when the assembled bytes contain
+one complete requested object, including its tag and length. A truncated object
+\textbf{SHALL} produce PIVERROR \code{0x1028} (malformed credential-object
+encoding). Normal object validation and selection rules then apply; the PD
+\textbf{SHALL} remove the status word before returning object data.
+This rule applies to commanded reads, PIV Auto, and internal biometric-object reads.
+Appendix~\ref{ex:twic-esticker-live} shows a captured write/read/erase sequence.
+
+\paragraph{TSA interpretation and interoperability}
+ISO/IEC~7816-4:2020, Section~5.2, defines short Le \code{0x00} as 256 bytes and
+extended all-zero Le as 65,536 bytes. TWIC Part~2, Section~5.2, note~3
+(page~37), instead describes Le \code{0x00} yielding an empty \code{0x9000}
+response as ISO-compliant. Appendix~E (page~59) of the same TWIC specification
+uses the ISO zero-encoded maximum and directs T=1 GET DATA to use Le
+\code{0x00}. This proposal uses explicit nonzero response-length requests to
+accommodate TSA's interpretation. Other federally issued credentials may require
+the ISO zero-encoded maximum or different length handling. The PD reports a
+credential length rejection through the existing failure path.
+
 \subsubsection{Get PIV Data (osdp\_PIVGETDATA)}\label{sec:pivdata}
 
 OSDP~3.0 retains command code \code{0xA3} and introduces the PIVGETDATA
@@ -147,8 +192,14 @@ The PD \textbf{SHALL} reject invalid field lengths, truncated requests,
 and trailing request bytes with \texttt{osdp\_PIVERROR} \code{0x0005}
 (invalid parameter).
 
+For biometric and privacy-key objects, the request and every data-reply fragment
+\textbf{SHALL} use Secure Channel~3.0 with deployment-specific keys as specified
+in paragraph~\ref{sec:osdp-security}. The PD checks this requirement before
+accessing the credential, independently of the requested element or byte range.
+
 The PD \textbf{SHALL} issue the card's \texttt{GET DATA} operation for the
-requested object on the active credential interface. Each request reads the
+requested object on the active credential interface, using the response-length
+and continuation rules in paragraph~\ref{sec:card-response-length}. Each request reads the
 credential; the PD \textbf{SHALL NOT} substitute object data retained from an
 earlier request. If the credential denies access through that interface, the
 PD \textbf{SHALL} report the failure using \texttt{osdp\_PIVERROR}.
@@ -295,7 +346,7 @@ PD error codes are carried in \texttt{osdp\_PIVERROR} using two-byte codes
 (least-significant byte first). The common PD codes remain available:
 \code{0x0001} (smart-card error),
 \code{0x0002} (smart-card timeout), \code{0x0004} (required TLV missing),
-\code{0x0005} (invalid parameter), \code{0x0006} (secure channel required),
+\code{0x0005} (invalid parameter), \code{0x0006} (Secure Channel~3.0 required),
 \code{0x0007} (invalid multi-part transfer),
 \code{0x0008} (multi-part fragment out of sequence), and
 \code{0x0009} (multi-part fragment out of bounds).
@@ -310,8 +361,9 @@ The following PIV-specific codes occupy the \code{0x1000}-\code{0x10FF} range:
   \ValueDescriptionRow{0x1025}{VCI not established.}
   \ValueDescriptionRow{0x1026}{Credential not present or removed.}
   \ValueDescriptionRow{0x1027}{Ambiguous element selection: more than one direct child matches the requested tag.}
-  \ValueDescriptionRow{0x1028}{Malformed credential-object encoding encountered during element extraction.}
+  \ValueDescriptionRow{0x1028}{Malformed credential-object encoding or invalid encrypted-reference length.}
   \ValueDescriptionRow{0x1029}{Selected response exceeds the supported transfer length.}
+  \ValueDescriptionRow{0x102A}{Multiple contactless credentials detected; all presented cards rejected.}
 \end{ValueDescriptionTable}
 
 The assignments are tentative. Unlisted codes remain unassigned by this proposal.
@@ -369,3 +421,17 @@ When a PD reports specific interfaces, it \textbf{SHALL} encode the compliance b
 Function Code~14 remains backward compatible with OSDP~2.2. A compliance value of \code{0x00}, \code{0x01}, \code{0x02}, or \code{0x03} retains its original meaning and indicates that the PD does not support the OSDP~3.0 biometric command set. Devices that support the enhanced commands \textbf{SHALL} set Bit~7 (\code{0x80}). When Bit~7 is asserted, the remaining bits of the compliance byte are interpreted as a capability bitfield. Bits not explicitly defined in Table~\ref{tab:function-code-14-flags} are reserved and \textbf{SHALL} be transmitted as zero.
 
 \input{tables/function-code-14}
+
+\subsubsection{Function Code 15 -- Secure PIN Entry Support}
+
+For a PD advertising Enhanced PIV (Function Code~12 bit~\code{0x04}),
+Function Code~15's compliance byte is the bitmask below. Values \code{0x00}
+and \code{0x01} retain their OSDP~2.2 Appendix~B.16 meanings: no SPE support
+and legacy SPE support, respectively. The ACU \textbf{SHALL} confirm Enhanced
+PIV support before interpreting the additional bits.
+
+\input{tables/function-code-15}
+
+Bit \code{0x04} requires bit \code{0x02}. Other bits are reserved and
+\textbf{SHALL} be transmitted as zero. Auto Execute begins only after the
+ACU arms it using PIVSPE, as specified in the command definition.

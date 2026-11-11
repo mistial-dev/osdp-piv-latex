@@ -1,7 +1,7 @@
 \subsection{Credential preparation and Secure Messaging}
 \label{sec:credential-sm-flow}
 
-OSDP Secure Channel protects communication between the ACU and PD.
+OSDP Secure Channel~3.0 protects communication between the ACU and PD.
 Credential Secure Messaging (SM) protects credential commands and replies between
 the PD and the credential. Credential SM can operate over contact or contactless.
 The Virtual Contact Interface (VCI) allows a contactless credential to perform
@@ -21,6 +21,30 @@ of \code{0x27} or \code{0x2E} advertises credential SM; SP~800-73-5 Part~2,
 Section~3.1.1, requires this indication when the PIV application supports SM.
 The PD \textbf{SHALL} distinguish a malformed response from a valid response
 that advertises neither SM algorithm.
+
+When a TWIC application is enabled in PIVMODE, the PD \textbf{SHALL} reject
+all cards if two or more contactless cards are detected in the RF field
+(TWIC Part~3, Section~8, item~3). It \textbf{SHALL} cancel the current
+credential operation, clear its credential context, and report PIVERROR
+\code{0x102A}; an active Auto attempt instead reports PIVSTATUS Result
+\code{0x05}, Detail \code{0x04}, and a pending SPE credential operation
+reports PIVSPER Result \code{0x08} (security condition not met).
+During this condition the PD reports no
+selected credential or AID in CARDSTATUSR and emits no credential identifier.
+After the transaction ends, the PD \textbf{SHALL} observe an empty RF field
+continuously for at least one second before reading a new contactless
+presentation (Section~8, item~4). ACA, data reads, and commanded biometric
+verification within one uninterrupted transaction share the same presentation.
+
+\paragraph{Required credential SM cipher suites}
+A PD supporting credential SM preparation through PIVMODE flag \code{0x02}
+\textbf{SHALL} implement both CS2 (\code{0x27}) and CS7 (\code{0x2E}) and use
+the suite advertised by the selected PIV application. SP~800-73-5 Part~2,
+Section~4.1.4 and Table~18, define their ECDH curves, CVC signatures, KDFs,
+nonces, and AES key sizes. An application supporting VCI with a P-384 digital
+signature, key-management, or retired key-management key requires CS7 under
+that section. The PD \textbf{SHALL} validate the CVC and perform key
+establishment and SM with the advertised suite's parameters.
 
 \paragraph{Discovery Object}
 The Discovery Object (\code{0x7E}) describes the credential's PIN and VCI policy.
@@ -60,7 +84,8 @@ An empty store prevents setup. If anchors are present, the PD must still find
 one that can validate this credential's certificate, directly or through an
 intermediate certificate. Loading an anchor makes it available for the next
 attempt. To start a new attempt with a credential already present, the ACU reapplies
-ordinary PIVMODE with a fresh Auto Series; the mode-change clearing rules apply.
+ordinary PIVMODE; when Auto is enabled, it supplies a fresh Series. The mode-change
+clearing rules apply.
 The Resume extension in Subsection~\ref{sec:pivauto-resume} continues only an eligible
 pairing/PIN prerequisite failure and does not restart blocked SM.
 
@@ -71,10 +96,30 @@ cryptogram as specified in
 SP~800-73-5 Part~2, Section~4.1. The PD \textbf{SHALL} report SM as established
 only after those checks succeed.
 
+\paragraph{SM identifier and ephemeral-key encoding}
+For both CS2 and CS7, the PD \textbf{SHALL} compute
+\(ID_{sICC} = T_8(\mathrm{SHA256}(C_{ICC}))\), where \(T_8\) selects the
+leftmost eight bytes and \(C_{ICC}\) is the complete encoded SM CVC, including
+the outer \code{0x7F21} tag and length. SP~800-73-5 Part~2, Section~4.1.1,
+Table~15, step~H6, defines this identifier. The KDF uses SHA-256 for CS2 and
+SHA-384 for CS7 under Section~4.1.6 and Table~18.
+
+The PD \textbf{SHALL} encode the ephemeral point coordinates as fixed-width,
+big-endian \(X \mathbin{\|} Y\): 32 bytes per coordinate for CS2 and 48 for CS7.
+For KDF \emph{OtherInfo}, it \textbf{SHALL} use the first 16 bytes of
+\(X \mathbin{\|} Y\). For key confirmation, the CMAC input \textbf{SHALL} be
+\(\texttt{KC\_1\_V} \mathbin{\|} ID_{sICC} \mathbin{\|} ID_{sH}
+\mathbin{\|} X \mathbin{\|} Y\), using the full coordinates. These encodings
+follow Sections~4.1.6--4.1.7. The GENERAL AUTHENTICATE command carries the
+uncompressed point \code{0x04} followed by \(X \mathbin{\|} Y\), as specified
+in Section~4.1.8. Thus the point-format byte is present in the command encoding;
+the KDF and key-confirmation inputs consist of the coordinate bytes above.
+
 \paragraph{Proceeding without SM}
 When SM is disabled, unsupported, or unavailable because a trust anchor is
 missing, the PD \textbf{SHALL} check whether the operation requested by the
-ACU or configured in PIV Auto requires SM. If SM is required, the PD
+ACU or configured in PIV Auto requires SM. PUT DATA requires SM whenever
+PIVMODE flag \code{0x02} is set. If SM is required, the PD
 \textbf{SHALL} terminate the operation without sending the operation's command
 to the credential and return the defined failure reply. Otherwise,
 the PD \textbf{SHALL} perform the requested operation under the credential's access

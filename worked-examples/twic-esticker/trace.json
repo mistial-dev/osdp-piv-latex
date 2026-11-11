@@ -1,0 +1,43 @@
+{
+  "captured_on": "2026-11-11",
+  "transport": "PC/SC contact",
+  "reader": "Identiv SCR3500 C Contact Reader",
+  "application_aid": "A000000367200000010103",
+  "source": "Live card APDU exchanges recorded in this session; verified repeat after initial write/erase.",
+  "initial_inspection": {
+    "command": "00CB3FFF035C01E1FF",
+    "response": "E1006282"
+  },
+  "exchanges": [
+    {
+      "step": "select",
+      "command": "00A4040009A00000036720000001FF",
+      "response": "612A4F0BA00000036720000001010379074F05A00000036750124E455847454E2052454C4541534520312E307F6608020203F8020280019000"
+    },
+    {
+      "step": "empty_before",
+      "command": "00CB3FFF035C01E1FF",
+      "response": "E10280006282"
+    },
+    {
+      "step": "write",
+      "command": "00DB3FFF07E1058103414243",
+      "response": "9000"
+    },
+    {
+      "step": "read_back",
+      "command": "00CB3FFF035C01E1FF",
+      "response": "E10581034142436282"
+    },
+    {
+      "step": "erase",
+      "command": "00DB3FFF04E1028000",
+      "response": "9000"
+    },
+    {
+      "step": "empty_after",
+      "command": "00CB3FFF035C01E1FF",
+      "response": "E10280006282"
+    }
+  ]
+}

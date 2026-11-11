@@ -16,6 +16,8 @@ from piv_auto_apdu import (
     derive_piv_auto_kdk,
     chunk_command_apdu,
     general_authenticate_apdu,
+    get_data_apdu,
+    get_response_apdu,
     parse_dynamic_auth_response,
     parse_general_authenticate_apdu,
     profile_input,
@@ -83,7 +85,37 @@ class PivAutoApduTests(unittest.TestCase):
         self.assertEqual(select_reader(["Reader A", "Reader B"], "Reader B"), "Reader B")
 
     def test_select_piv_apdu(self):
-        self.assertEqual(select_piv_apdu().hex().upper(), "00A404000BA000000308000010000100")
+        self.assertEqual(select_piv_apdu().hex().upper(), "00A404000BA000000308000010000100FF")
+
+    def test_explicit_card_response_lengths(self):
+        self.assertEqual(get_data_apdu(bytes.fromhex("5FC101")).hex().upper(),
+                         "00CB3FFF055C035FC101FF")
+        for profile_id, width, length in [("9e-ecp384", 1, 0x3C),
+                                         ("9e-rsa2048", 2, 0x113),
+                                         ("9e-rsa3072", 2, 0x193)]:
+            profile = PROFILES[profile_id]
+            digest = hashlib.new(profile.digest_name, b"explicit length").digest()
+            apdu = general_authenticate_apdu(profile, profile_input(profile, digest))
+            self.assertEqual(len(apdu), length)
+            self.assertEqual(parse_general_authenticate_apdu(apdu)["le"], b"\xFF" * width)
+            with self.assertRaises(ValueError):
+                general_authenticate_apdu(profile, profile_input(profile, digest), le=0)
+
+    def test_get_response_recovers_more_than_255_bytes(self):
+        pending = bytes(range(256)) + b"last chunk"
+        received = bytearray()
+        while pending:
+            sw2 = len(pending) if len(pending) < 256 else 0
+            apdu = get_response_apdu(sw2)
+            self.assertEqual(apdu[:4], bytes.fromhex("00C00000"))
+            self.assertGreater(apdu[-1], 0)
+            self.assertLessEqual(apdu[-1], 255)
+            count = apdu[-1]
+            received.extend(pending[:count])
+            pending = pending[count:]
+        self.assertEqual(bytes(received), bytes(range(256)) + b"last chunk")
+        self.assertEqual(get_response_apdu(0).hex().upper(), "00C00000FF")
+        self.assertEqual(get_response_apdu(1).hex().upper(), "00C0000001")
 
     def test_verify_pin_apdu(self):
         self.assertEqual(verify_pin_apdu("123456").hex().upper(), "0020008008313233343536FFFF")
@@ -158,7 +190,7 @@ class PivAutoApduTests(unittest.TestCase):
         apdu = general_authenticate_apdu(profile, input_value)
         chunks = chunk_command_apdu(apdu, max_data=240)
         self.assertGreater(len(chunks), 1)
-        self.assertEqual(chunks[-1][-1], 0)
+        self.assertEqual(chunks[-1][-1], 0xFF)
         self.assertTrue(chunks[0][0] & 0x10)
         self.assertFalse(chunks[-1][0] & 0x10)
 

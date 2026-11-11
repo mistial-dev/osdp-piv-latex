@@ -32,6 +32,9 @@ trap 'rm -rf "$scratch_dir"' EXIT
 mkdir -p "$redline_dir" "$scratch_dir/base"
 git archive "$base_commit" | tar -x -C "$scratch_dir/base"
 
+# Show the current change history once; diffing its list structure duplicates dates.
+cp sections/00-changelog.tex "$scratch_dir/base/sections/00-changelog.tex"
+
 (
   cd "$scratch_dir/base"
   "$latexpand_tool" main.tex

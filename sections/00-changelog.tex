@@ -1,84 +1,317 @@
 \section*{Changelog}
 \addcontentsline{toc}{section}{Changelog}
 
-\begin{description}
-\item[2026-10-14] Added a key-reference byte to each PIV Auto profile. The PD reads the
-card's certificate to choose the algorithm, so the same profile can handle RSA and ECC
-cards. Added a resume option after pairing or PIN entry, defined counter handling and
-the challenge format, and updated the appendix with PIV and Legacy/NextGen TWIC examples.
-\item[2026-10-07] Added ``Invalid TPK'' for missing or incorrect TWIC Privacy Keys and
-corrected the TPK field to 16 bytes. Clarified PIV/TWIC application selection and added
-a Data Model byte to PIVSELECT. Updated the Legacy/NextGen fingerprint and facial workflows
-and the BIOMATCH hash description. Clarified CRAUTH cleanup so each new request starts a
-fresh transaction while the previous reply remains available for retransmission.
-\item[2026-09-16] Changes from OSDP 2.2:
+\subsubsection*{2026-11-11}
 \begin{itemize}
-  \item Renamed \texttt{osdp\_PIVDATA}/\texttt{osdp\_PIVDATAR} to \texttt{osdp\_PIVGETDATA}/\texttt{osdp\_PIVGETDATAR}, retaining command code \code{0xA3}. Added identifier and tag lengths, two-byte offsets and requested lengths, and whole-object or unique direct-child selection with the original tag and length bytes preserved. Defined OSDP 3.0 multi-part delivery and an all-zero first reply for empty success. Command data length distinguishes the new request from the fixed-length OSDP 2.2 form.
-  \item Added Format Marker \code{0xFF} to the reassembled \texttt{osdp\_CRAUTH} request, retaining command code \code{0xA5}. Multi-part lengths and offsets cover the marker, algorithm, key reference, and challenge. OSDP 3.0 ACUs use the new CRAUTH and PIVGETDATA forms with supporting PDs; PDs may additionally support the OSDP 2.2 forms, with format-specific response handling.
-  \item Renamed \texttt{osdp\_PDERROR} to \texttt{osdp\_PIVERROR} and added GET DATA selection and transfer errors. The new CRAUTH and PIVGETDATA forms return one terminal PIVERROR on failure, replacing CRAUTH's empty failure reply and optional follow-up error. Renumbered tentative PIV-specific errors consecutively from \code{0x1020} through \code{0x1029}; credential removal is now \code{0x1026}.
-  \item Separated credential SM setup, VCI pairing, and PIN verification. Clarified automatic preparation over contact and contactless, PIV Auto failure reporting, and ACU-directed recovery. Authenticated PIN and pairing rejections preserve SM; SM processing and integrity failures end the session.
-  \item Added \texttt{osdp\_CARDSTATUS} Type \code{0x02} diagnostics containing the SM outcome and credential CVC hash. Every CARDSTATUSR now includes Status Type after reply code \code{0x85}: \code{0x01} for standard status and pairing completion, \code{0x02} before the multi-part fields in each diagnostic fragment. Extended \texttt{osdp\_PIVSTATUS} with SW1/SW2 when a verified credential failure status is available; the status word follows the signed response in the reassembled payload.
-  \item Defined cached-PIN reuse without extending the original deadline, silent idle expiration, and completion of requests affected by expiration. Bounded PD timeout defaults to 1--255 seconds. Reassigned SPE flags \code{0x01} for retention across removal and \code{0x02} for Auto Execute; added result \code{0x0B} for credential communication failure or timeout, requiring preparation to restart after an unconfirmed PIN VERIFY. Applied the same restart rule to pairing VERIFY timeouts, reported through existing PIVERROR \code{0x0002} (smart-card timeout).
-  \item Added workflow diagrams and worked packet examples for selection, SM/VCI recovery, PIN-cache timing, and multi-part replies. Standardized table sizes and protocol values on hexadecimal notation.
+  \item Added TWIC Mode~2 Active Card Authentication as a PIV Auto profile, with a capability flag,
+    certificate-derived FASC-N, and a proposed 127-byte challenge and RSA/ECC prehash construction.
+    Added NexGen V10 AID recognition and clarified unknown minor-version handling. Updated the
+    Appendix~C ACA example and documented Mode~4 composition using commanded fingerprint
+    verification.
+  \item Specified maximum card response-length requests as \code{0xFF} (short) and \code{0xFFFF}
+    (extended), with shorter nonzero lengths permitted. Documented TSA's interpretation of ISO
+    response-length encoding, its conflict with TWIC Appendix~E, and potential compatibility issues
+    with other federally issued credentials.
+  \item Renamed the OSDP channel requirement to Secure Channel~3.0. Required protected TPK loading,
+    biometric-object reads, biometric matching, and match replies with deployment-specific keys,
+    per-fragment checks, and cleanup on channel loss or replacement to protect the ACU--PD link
+    against line tapping.
+  \item Required biometric signature validation and identity binding for PIV and TWIC. Allowed
+    maintained enrollment-time validation, with the reply hash identifying the verified reference
+    record.
+  \item Made PIVMODE flag \code{0x02} require SM for PUT DATA and kept SELECT ordinary. Added
+    protected and ordinary provisioning examples, with completion tied to the card's result.
+  \item Enabled contact and contactless NEXGEN TWIC free read/write E-Stickers in the selected TWIC
+    application. Defined native TLV encoding, accepted \code{0x6282} for complete reads, and added
+    write/read examples and a captured write/read/erase sequence.
+  \item Distinguished TWIC fingerprint verification, Reference Picture Verification, and PACS-held
+    alternate-biometric matching, with FASC-N and transaction binding under 33~CFR~101.105
+    and~101.520(c).
+  \item Specified TWIC AES-128-ECB decryption, padding and reference checks. Defined Result
+    \code{0x07} for TPK/decryption failure, \code{0x0A} for an absent reference, and \code{0x0B} for
+    an unusable reference.
+  \item Required multiple-card rejection, PIVERROR \code{0x102A}, and a one-second RF removal
+    interval between TWIC presentations.
+  \item Required CS2 and CS7 for credential SM preparation and defined biometric working-data and
+    TPK zeroization. Specified the SHA-256-derived card identifier and coordinate-only KDF and
+    key-confirmation inputs, with the uncompressed-point prefix retained in the card command.
+  \item Defined Function Code~15 capability bits for legacy SPE, explicit PIV SPE, and ACU-armed
+    Auto Execute. Simplified LOADTPK to a 16-byte key for one biometric operation in the current
+    presentation, with unconditional key cleanup.
+  \item Aligned PIVMODE's Bluetooth interface bit with Function Code~13 at \code{0x10}, and reserved
+    \code{0x08} in both global and per-entry masks.
+  \item Updated TWIC Part~4 to October 2026, corrected registration and operational citations, and
+    added the 2026 EC384 technical advisories. Referenced 33~CFR~101.520 for authentication and
+    validity checks. Corrected digest byte-size notation in the autonomous-PIV table.
 \end{itemize}
-\item[2026-09-02] Made proposal builds self-contained by vendoring the SIL-licensed
-Carlito typeface, replacing system Calibri and Arial dependencies with real regular,
-bold, italic, and bold-italic faces, and documenting the XeLaTeX and \texttt{latexmk}
-requirements. Completed the Enhanced PIV message-name cleanup by applying the compact
-OSDP naming convention consistently to \code{osdp_PIVLOADTPK},
-\code{osdp_PIVXMITPAIRING}, \code{osdp_PIVVCILOADTA},
-\code{osdp_PIVVCITASTATUS}, and \code{osdp_PIVVCITASTATUSR}; command and reply codes,
-payloads, and behavior are unchanged. Standardized multi-part messages on the generic OSDP
-\emph{MpSizeTotal}, \emph{MpOffset}, and \emph{MpFragmentSize} field names and moved the
-multi-part fields ahead of the reassembled \code{osdp_PIVMODE} and
-\code{osdp_PIVVCILOADTA} data. The current \code{osdp_PIVVCILOADTA} definition supersedes
-the anchor-only multi-part sizing described in the 2026-05-30 entry: its total now includes
-the 12-byte metadata block. Updated the PIV Auto simulator, generated fixtures, proposal PDF,
-and redline PDF to exercise and publish the same framing and naming.
-\item[2026-08-12] Proposed Secure PIN Entry changes and consistency cleanup:
+
+\subsubsection*{2026-10-14}
 \begin{itemize}
-  \item Proposed clear, mode-specific SPE behavior for status, PIN acquisition and verification, cached-PIN verification, cache/abort, and attempts-remaining queries. The proposal also defines finite default timeouts, cache and PIN-verified lifecycles, and ACK/poll completion behavior.
-  \item Proposed a one-byte \texttt{osdp\_PIVSPER} reply whose value is interpreted by the requested mode. The OSDP~2.2 \texttt{osdp\_PR01SPER} reply remains unchanged.
-  \item Standardized Enhanced PIV names, including renaming the autonomous PIV Auto reply to \texttt{osdp\_PIVSTATUS}. Corrected tentative code conflicts by assigning \texttt{osdp\_PIVSELECT} to \code{0xB0} and \texttt{osdp\_PDERROR} to \code{0x8A}.
+  \item Added per-profile key references and certificate-based algorithm discovery so the same PIV
+    Auto configuration supports RSA and ECC cards.
+  \item Added a resume option after pairing or PIN entry, defined counter handling and the challenge
+    format, and updated the appendix with PIV and Legacy/NextGen TWIC examples.
 \end{itemize}
-\item[2026-06-18] PIVSELECT, PDERROR, and VCI consistency updates:
+
+\subsubsection*{2026-10-07}
 \begin{itemize}
-  \item Added \texttt{osdp\_PIVSELECT} as an OSDP-native direct AID selection command using tentative command code \code{0xA7}; clarified its ISO/IEC~7816 \texttt{SELECT by DF name} mapping, selected-AID status update, and application-state clearing rules.
-  \item Removed stale \texttt{osdp\_CRAUTHR} \texttt{osdp\_PDERROR} wording so codes \code{0x0006}/\code{0x0007} retain their common meanings for secure-channel and multi-part errors.
-  \item Clarified that VCI pairing codes are transmitted from the ACU to the PD only over OSDP Secure Channel~2.0 and are used by the PD to establish VCI secure messaging with the credential.
-  \item Tightened and clarified verbiage by replacing imprecise ``legacy'' terminology throughout normative text with neutral wording such as unchanged, OSDP~2.2-format, and poll-based; retained ``legacy'' only for withdrawn algorithms such as RSA-1024 test material.
+  \item Added the Invalid TPK result for TWIC Privacy Key failures and set the TPK field length to
+    16 bytes.
+  \item Clarified PIV/TWIC application selection and added a Data Model byte to PIVSELECT.
+  \item Updated the Legacy/NextGen fingerprint and facial workflows and the BIOMATCH hash
+    description.
+  \item Clarified CRAUTH cleanup so each new request starts a fresh transaction while the previous
+    reply remains available for retransmission.
 \end{itemize}
-\item[2026-05-30] Added source-backed VCI and PIV Auto examples, clarified PIV Auto interoperability requirements, and improved reviewability:
+
+\subsubsection*{2026-09-16}
 \begin{itemize}
-  \item Added NIST-derived VCI and PIV APDU fixture coverage, GSA-backed demonstration keys, and reproducible worked examples for PIV Auto and VCI validation. RSA-1024 material is retained only as informative legacy/non-current test-vector material.
-  \item Clarified PIV Auto cryptographic inputs and response handling, including KMAC-derived challenge construction, RSA and ECC \texttt{GENERAL AUTHENTICATE} templates, nonzero UUID requirements, and complete returned \code{0x7C} Dynamic Authentication Templates in \texttt{osdp\_PIVSTATUS}.
-  \item Aligned related command semantics for capability advertising, \texttt{osdp\_CARDSTATUS} errors, selective \texttt{osdp\_PIVDATA} replies, \texttt{osdp\_PIVSPE} status/abort modes, and VCI trust-anchor inventory.
-  \item Reworked Appendix C and the references section for standards review: examples are explicitly informative, vector provenance is documented, source fixtures are framed as public test material, and normative references now include the needed APDU, KMAC, X.509, and requirement-language specifications.
-  \item Added supporting scripts and tests for deterministic simulation, fixture replay, VCI import/validation, Appendix C generation, YubiKey material loading, live APDU capture, and reproducible PDF/table builds.
+  \item Renamed \texttt{osdp\_PIVDATA}/\texttt{osdp\_PIVDATAR} to
+    \texttt{osdp\_PIVGETDATA}/\texttt{osdp\_PIVGETDATAR}, retaining command code \code{0xA3}. Added
+    identifier and tag lengths, two-byte offsets and requested lengths, and whole-object or unique
+    direct-child selection with the original tag and length bytes preserved. Defined OSDP 3.0
+    multi-part delivery and an all-zero first reply for empty success. Command data length
+    distinguishes the new request from the fixed-length OSDP 2.2 form.
+  \item Added Format Marker \code{0xFF} to the reassembled \texttt{osdp\_CRAUTH} request, retaining
+    command code \code{0xA5}. Multi-part lengths and offsets cover the marker, algorithm, key
+    reference, and challenge. OSDP 3.0 ACUs use the new CRAUTH and PIVGETDATA forms with supporting
+    PDs; PDs may additionally support the OSDP 2.2 forms, with format-specific response handling.
+  \item Renamed \texttt{osdp\_PDERROR} to \texttt{osdp\_PIVERROR} and added GET DATA selection and
+    transfer errors. The new CRAUTH and PIVGETDATA forms return one terminal PIVERROR on failure,
+    replacing CRAUTH's empty failure reply and optional follow-up error. Renumbered tentative
+    PIV-specific errors consecutively from \code{0x1020} through \code{0x1029}; credential removal
+    is now \code{0x1026}.
+  \item Separated credential SM setup, VCI pairing, and PIN verification. Clarified automatic
+    preparation over contact and contactless, PIV Auto failure reporting, and ACU-directed recovery.
+    Authenticated PIN and pairing rejections preserve SM; SM processing and integrity failures end
+    the session.
+  \item Added \texttt{osdp\_CARDSTATUS} Type \code{0x02} diagnostics containing the SM outcome and
+    credential CVC hash. Every CARDSTATUSR now includes Status Type after reply code \code{0x85}:
+    \code{0x01} for standard status and pairing completion, \code{0x02} before the multi-part fields
+    in each diagnostic fragment. Extended \texttt{osdp\_PIVSTATUS} with SW1/SW2 when a verified
+    credential failure status is available; the status word follows the signed response in the
+    reassembled payload.
+  \item Defined cached-PIN reuse without extending the original deadline, silent idle expiration,
+    and completion of requests affected by expiration. Bounded PD timeout defaults to 1--255
+    seconds. Reassigned SPE flags \code{0x01} for retention across removal and \code{0x02} for Auto
+    Execute; added result \code{0x0B} for credential communication failure or timeout, requiring
+    preparation to restart after an unconfirmed PIN VERIFY. Applied the same restart rule to pairing
+    VERIFY timeouts, reported through existing PIVERROR \code{0x0002} (smart-card timeout).
+  \item Added workflow diagrams and worked packet examples for selection, SM/VCI recovery, PIN-cache
+    timing, and multi-part replies. Standardized table sizes and protocol values on hexadecimal
+    notation.
 \end{itemize}
-\item[2026-05-27] Version renamed from OSDP~2.3 to OSDP~3.0 throughout. Consolidated PIV Auto, biometric-result, VCI trust-anchor, and SPE updates:
+
+\subsubsection*{2026-09-02}
 \begin{itemize}
-  \item Removed \texttt{osdp\_PIVSPE} flag \code{0x01} (retry continuation); each \texttt{osdp\_PIVSPE} command now initiates exactly one PIN-entry session and \texttt{osdp\_PIVSPER} terminates the session unconditionally, including on PIN mismatch. ACUs wishing to allow additional attempts \textbf{MAY} re-issue \texttt{osdp\_PIVSPE}, using the \emph{Attempts Remaining} count from the preceding \texttt{osdp\_PIVSPER} to guide retry policy. Bit \code{0x01} is now reserved.
-  \item Aligned \texttt{osdp\_PIVSPER} and \texttt{osdp\_PIVBIOMATCHR} result codes for credential removal, changed \texttt{osdp\_PIVBIOMATCHR} \code{0x03} to PIN verification required, reserved \texttt{osdp\_PIVBIOMATCHR} \code{0x07}, clarified biometric assurance limits, and specified that only off-card biometric match success returns the 32-byte SHA-256 hash of tag \code{0xBC}.
-  \item Clarified the Function Code~14 biometric-support reference for \texttt{osdp\_PIVLOADTPK} and added CAC as PIV mode data model \code{0x03}.
-  \item Added PIV Auto KMAC challenge derivation, required series and sequence counters, fixed-width supplemental entropy, and the \texttt{osdp\_PIVSTATUS} poll reply for reporting credential identity and signed challenge responses. PIV Auto is configured through \texttt{osdp\_PIVMODE} and is restricted to Secure Channel~2.0 sessions that are not using factory keys.
-  \item Replaced the SP~800-73 Intermediate CVC anchor model with an OSDP-defined VCI trust anchor record (tag \code{0x7F50}) carrying a Profile Identifier (\code{0x80} = \code{0x01}), an eight-byte Issuer Identifier Number (\code{0x42}), and a DER-encoded SubjectPublicKeyInfo (\code{0x7F49}). Maximum conforming record size is 576~bytes (\code{0x0240}), derived from the RSA-4096 key case.
-  \item Added normative IIN derivation rule: the IIN in \texttt{osdp\_PIVVCILOADTA} and in the trust anchor record \textbf{SHALL} be the leftmost eight bytes of the subjectKeyIdentifier from the content-signing X.509 certificate.
-  \item Tightened \texttt{osdp\_PIVVCILOADTA} multi-part encoding: Anchor Length and MpSizeTotal ranges corrected to \code{0x0000}-\code{0x0240}; added normative constraint that \texttt{MpOffset}~+~\texttt{MpFragmentSize} \textbf{SHALL NOT} exceed \texttt{Anchor Length}; PD \textbf{SHALL} verify the reassembled byte string is exactly \emph{Anchor Length} bytes and a single \code{0x7F50} record before committing.
-  \item Documented variable-length PD storage accounting: PDs \textbf{SHALL} account for anchors by their actual \emph{Anchor Length}, not a fixed maximum; replacement is atomic (prior anchor remains if replacement fails); delete releases actual stored bytes.
-  \item Specified the two-tier PD verification path during VCI establishment: direct (trust anchor IIN matches secure messaging CVC IIN, anchor SPKI verifies CVC signature) and intermediate (no direct match triggers retrieval of PIV data object \code{0x1017}/\texttt{5FC122}; Intermediate CVC Subject Identifier must equal CVC IIN, Role \code{0x5F4C} must be \code{0x12}, anchor IIN must match Intermediate CVC IIN, anchor SPKI verifies Intermediate CVC, Intermediate CVC verifies secure messaging CVC). PDs \textbf{SHALL NOT} perform X.509 path validation or revocation for VCI trust anchors.
-  \item Added normative ACU post-VCI validation requirements: after \texttt{osdp\_CARDSTATUSR} reports VCI established, the ACU \textbf{SHALL} obtain the content-signing certificate (from cache or via \texttt{osdp\_PIVDATA} for \code{0x1017}/inner tag \code{0x70}), verify SKI matches \emph{VCI Anchor IIN}, verify SPKI matches the stored anchor record, verify PIV or PIV-I content-signing EKU OID, verify validity period (expired certificate \textbf{SHALL} cause session rejection and anchor unload), and perform X.509 path validation and revocation per deployment policy.
-  \item Restored \emph{VCI Trust Anchor ID} to \texttt{osdp\_CARDSTATUSR} with normative language; added \emph{VCI CVC IIN} and \emph{VCI Anchor IIN} fields (each 8~bytes) so the ACU receives the IIN pair needed to distinguish direct and intermediate verification paths.
-  \item Updated \texttt{osdp\_PIVVCITASTATUSR}: clarified that \emph{Available Bytes} reflects variable-length accounting and that the per-record IIN is the anchor selector from the stored trust anchor record, not necessarily the secure messaging CVC IIN reported in \texttt{osdp\_CARDSTATUSR}.
-  \item Added VCI security preconditions: all VCI-related commands \textbf{SHALL} be rejected unless OSDP Secure Channel~2.0 is active and not using factory/default keys; failures reported via \texttt{osdp\_PDERROR} \code{0x0006}.
+  \item Made proposal builds self-contained with the SIL-licensed Carlito typeface in regular, bold,
+    italic, and bold-italic faces. Documented the XeLaTeX and \texttt{latexmk} requirements.
+  \item Completed the Enhanced PIV message-name cleanup by applying the compact OSDP naming
+    convention consistently to \code{osdp_PIVLOADTPK}, \code{osdp_PIVXMITPAIRING},
+    \code{osdp_PIVVCILOADTA}, \code{osdp_PIVVCITASTATUS}, and \code{osdp_PIVVCITASTATUSR}; command
+    and reply codes, payloads, and behavior are unchanged.
+  \item Standardized multi-part messages on the generic OSDP \emph{MpSizeTotal}, \emph{MpOffset},
+    and \emph{MpFragmentSize} field names and moved the multi-part fields ahead of the reassembled
+    \code{osdp_PIVMODE} and \code{osdp_PIVVCILOADTA} data.
+  \item The current \code{osdp_PIVVCILOADTA} definition supersedes the anchor-only multi-part sizing
+    described in the 2026-05-30 entry: its total now includes the 12-byte metadata block.
+  \item Updated the PIV Auto simulator, generated fixtures, proposal PDF, and redline PDF to
+    exercise and publish the same framing and naming.
 \end{itemize}
-\item[2026-01-21] Error-handling cleanup and code assignments: \textbf{(1)} \texttt{osdp\_PIVPUTDATA} now \textbf{SHALL} report failures via \texttt{osdp\_PDERROR} (status word optional) so writes can’t silently succeed. \textbf{(2)} \texttt{osdp\_PIVSPE} adds result code \code{0x09} in \texttt{osdp\_PIVSPER} for “VCI not established.” \textbf{(3)} PDERROR is credential/global only; PD capability gaps stay \texttt{osdp\_NAK}. \textbf{(4)} OSDP~2.2-format replies (e.g., \texttt{osdp\_CRAUTHR}, \texttt{osdp\_PIVDATAR}) remain unchanged, with optional follow-up \texttt{osdp\_PDERROR} detail if the PD has it. \textbf{(5)} Documented tentative command/reply codes for the new PIV set: commands \code{0xA6} (VCI trust-anchor status) through \code{0xAF} (VCI trust-anchor load), and replies \code{0x85}-\code{0x89} for the new responses.
-\item[2026-01-07] Added a PIV Mode interface-mask table aligned to Function Code 13 bits, clarified \texttt{osdp\_CRAUTHR} reply structure (full GENERAL AUTHENTICATE response without SW1\textbar SW2; status words reported via \texttt{osdp\_PDERROR} only), tightened \texttt{osdp\_CARDSTATUS}/\texttt{osdp\_CARDSTATUSR} behavior (solicited-only after PD preparation; error on credential removal), remapped the PIV error codes to the \code{0x10xx} block per subcommittee guidance, added PIV APDU references, aligned \texttt{osdp\_PIVDATA} tag selection to allow Discovery (\code{0x7E})/BIT (\code{0x7F61}) subtags in line with SP\,800-73-4, clarified that \texttt{osdp\_PDERROR} conveys a single error per reply, and clarified \texttt{osdp\_PIVXMITPAIRING} handling so pairing codes can be provided before VCI is established when the credential requires them.
-\item[2025-12-10] Consolidated application-level errors on \texttt{osdp\_PDERROR} (two-byte codes, optional SW1\textbar SW2 for APDU failures, multi-error support); moved the PIV error set to \code{0x0100}-\code{0x01FF} and updated PIV commands to use \texttt{osdp\_PDERROR} (transport faults remain \texttt{osdp\_NAK}); made the Global Interface Mask in \texttt{osdp\_PIVMODE} a required byte (no TLV tag) with an updated field layout; clarified that \texttt{osdp\_CARDSTATUSR} is solicited-only after PD preparation with poll-based \texttt{osdp\_RAW} as the aggregated card-present indication; and noted the deprecation of \texttt{osdp\_GENAUTH} with a recommendation to migrate to \texttt{osdp\_CRAUTH}.
-\item[2025-12-04] Clarified that \texttt{osdp\_CRAUTHR} returns the full \texttt{GENERAL AUTHENTICATE} data including the Dynamic Authentication Template (excluding only the ISO/IEC~7816 status word).
-\item[2025-11-12] Added PIV Biometric Match request/reply and tables (one-bit type values only); moved Enhanced PIV NAKs to a 0x20+ base (added 0x27 Credential Not Present/Removed, 0x28 Biometric Type Not Supported; clarified 0x23 Credential Security Status Not Satisfied); aligned CRAUTHR error handling to reference the enhanced NAK set; relocated Enhanced PIV (0x04) and PIV Auto (0x08) indicators to Function Code 12 and cleaned Function Code 13 to interface-only bits (removed non-interface flags; removed PIV Auto from Function Code 14); updated CARDSTATUS gating to Function Code 12 bit 0x04; added a PIV Mode Flags table and clarified PIV Mode AID encoding; enabled PDF TOC hyperlinks and improved table/caption pagination.
-\item[2025-10-30] Clarified CRAUTH command/reply behaviour (including RSA, AES, and ECC support), overhauled PIV Mode configuration with TLV-based application and interface controls (including PIV Auto), added card status request/reply messages, expanded PIV data retrieval semantics, introduced PIV Put Data, PIV Secure PIN Entry, TWIC privacy-key load, VCI pairing transmit, and VCI trust-anchor load/status commands, and documented the enhanced error-code set (including VCI/PIV Auto conditions).
-  \item[2025-09-17] Major PIV Mode and SPE revisions.
-  \item[2025-06-25] Added multi-AID usage and VCI support notes.
-  \item[2025-05-27] New function code definitions for 3.0 biometric handling.
-\end{description}
+
+\subsubsection*{2026-08-12}
+\begin{itemize}
+  \item Proposed clear, mode-specific SPE behavior for status, PIN acquisition and verification,
+    cached-PIN verification, cache/abort, and attempts-remaining queries. The proposal also defines
+    finite default timeouts, cache and PIN-verified lifecycles, and ACK/poll completion behavior.
+  \item Proposed a one-byte \texttt{osdp\_PIVSPER} reply whose value is interpreted by the requested
+    mode. The OSDP~2.2 \texttt{osdp\_PR01SPER} reply remains unchanged.
+  \item Standardized Enhanced PIV names, including renaming the autonomous PIV Auto reply to
+    \texttt{osdp\_PIVSTATUS}. Corrected tentative code conflicts by assigning
+    \texttt{osdp\_PIVSELECT} to \code{0xB0} and \texttt{osdp\_PDERROR} to \code{0x8A}.
+\end{itemize}
+
+\subsubsection*{2026-06-18}
+\begin{itemize}
+  \item Added \texttt{osdp\_PIVSELECT} as an OSDP-native direct AID selection command using
+    tentative command code \code{0xA7}; clarified its ISO/IEC~7816 \texttt{SELECT by DF name}
+    mapping, selected-AID status update, and application-state clearing rules.
+  \item Removed stale \texttt{osdp\_CRAUTHR} \texttt{osdp\_PDERROR} wording so codes
+    \code{0x0006}/\code{0x0007} retain their common meanings for secure-channel and multi-part
+    errors.
+  \item Clarified that VCI pairing codes are transmitted from the ACU to the PD only over OSDP
+    Secure Channel~3.0 and are used by the PD to establish VCI secure messaging with the credential.
+  \item Tightened and clarified verbiage by replacing imprecise ``legacy'' terminology throughout
+    normative text with neutral wording such as unchanged, OSDP~2.2-format, and poll-based; retained
+    ``legacy'' only for withdrawn algorithms such as RSA-1024 test material.
+\end{itemize}
+
+\subsubsection*{2026-05-30}
+\begin{itemize}
+  \item Added NIST-derived VCI and PIV APDU fixture coverage, GSA-backed demonstration keys, and
+    reproducible worked examples for PIV Auto and VCI validation. RSA-1024 material is retained only
+    as informative legacy/non-current test-vector material.
+  \item Clarified PIV Auto cryptographic inputs and response handling, including KMAC-derived
+    challenge construction, RSA and ECC \texttt{GENERAL AUTHENTICATE} templates, nonzero UUID
+    requirements, and complete returned \code{0x7C} Dynamic Authentication Templates in
+    \texttt{osdp\_PIVSTATUS}.
+  \item Aligned related command semantics for capability advertising, \texttt{osdp\_CARDSTATUS}
+    errors, selective \texttt{osdp\_PIVDATA} replies, \texttt{osdp\_PIVSPE} status/abort modes, and
+    VCI trust-anchor inventory.
+  \item Reworked Appendix C and the references section for standards review: examples are explicitly
+    informative, vector provenance is documented, source fixtures are framed as public test
+    material, and normative references now include the needed APDU, KMAC, X.509, and
+    requirement-language specifications.
+  \item Added supporting scripts and tests for deterministic simulation, fixture replay, VCI
+    import/validation, Appendix C generation, YubiKey material loading, live APDU capture, and
+    reproducible PDF/table builds.
+\end{itemize}
+
+\subsubsection*{2026-05-27}
+\begin{itemize}
+  \item Version renamed from OSDP~2.3 to OSDP~3.0 throughout.
+  \item Removed \texttt{osdp\_PIVSPE} flag \code{0x01} (retry continuation); each
+    \texttt{osdp\_PIVSPE} command now initiates exactly one PIN-entry session and
+    \texttt{osdp\_PIVSPER} terminates the session unconditionally, including on PIN mismatch. ACUs
+    wishing to allow additional attempts \textbf{MAY} re-issue \texttt{osdp\_PIVSPE}, using the
+    \emph{Attempts Remaining} count from the preceding \texttt{osdp\_PIVSPER} to guide retry policy.
+    Bit \code{0x01} is now reserved.
+  \item Aligned \texttt{osdp\_PIVSPER} and \texttt{osdp\_PIVBIOMATCHR} result codes for credential
+    removal, changed \texttt{osdp\_PIVBIOMATCHR} \code{0x03} to PIN verification required, reserved
+    \texttt{osdp\_PIVBIOMATCHR} \code{0x07}, clarified biometric assurance limits, and specified
+    that only off-card biometric match success returns the 32-byte SHA-256 hash of tag \code{0xBC}.
+  \item Clarified the Function Code~14 biometric-support reference for \texttt{osdp\_PIVLOADTPK} and
+    added CAC as PIV mode data model \code{0x03}.
+  \item Added PIV Auto KMAC challenge derivation, required series and sequence counters, fixed-width
+    supplemental entropy, and the \texttt{osdp\_PIVSTATUS} poll reply for reporting credential
+    identity and signed challenge responses. PIV Auto is configured through \texttt{osdp\_PIVMODE}
+    and is restricted to Secure Channel~3.0 sessions that are not using factory keys.
+  \item Replaced the SP~800-73 Intermediate CVC anchor model with an OSDP-defined VCI trust anchor
+    record (tag \code{0x7F50}) carrying a Profile Identifier (\code{0x80} = \code{0x01}), an
+    eight-byte Issuer Identifier Number (\code{0x42}), and a DER-encoded SubjectPublicKeyInfo
+    (\code{0x7F49}). Maximum conforming record size is 576~bytes (\code{0x0240}), derived from the
+    RSA-4096 key case.
+  \item Added normative IIN derivation rule: the IIN in \texttt{osdp\_PIVVCILOADTA} and in the trust
+    anchor record \textbf{SHALL} be the leftmost eight bytes of the subjectKeyIdentifier from the
+    content-signing X.509 certificate.
+  \item Tightened \texttt{osdp\_PIVVCILOADTA} multi-part encoding: Anchor Length and MpSizeTotal
+    ranges corrected to \code{0x0000}-\code{0x0240}; added normative constraint that
+    \texttt{MpOffset}~+~\texttt{MpFragmentSize} \textbf{SHALL NOT} exceed \texttt{Anchor Length}; PD
+    \textbf{SHALL} verify the reassembled byte string is exactly \emph{Anchor Length} bytes and a
+    single \code{0x7F50} record before committing.
+  \item Documented variable-length PD storage accounting: PDs \textbf{SHALL} account for anchors by
+    their actual \emph{Anchor Length}, not a fixed maximum; replacement is atomic (prior anchor
+    remains if replacement fails); delete releases actual stored bytes.
+  \item Specified the two-tier PD verification path during VCI establishment: direct (trust anchor
+    IIN matches secure messaging CVC IIN, anchor SPKI verifies CVC signature) and intermediate (no
+    direct match triggers retrieval of PIV data object \code{0x1017}/\texttt{5FC122}; Intermediate
+    CVC Subject Identifier must equal CVC IIN, Role \code{0x5F4C} must be \code{0x12}, anchor IIN
+    must match Intermediate CVC IIN, anchor SPKI verifies Intermediate CVC, Intermediate CVC
+    verifies secure messaging CVC). PDs \textbf{SHALL NOT} perform X.509 path validation or
+    revocation for VCI trust anchors.
+  \item Added normative ACU post-VCI validation requirements: after \texttt{osdp\_CARDSTATUSR}
+    reports VCI established, the ACU \textbf{SHALL} obtain the content-signing certificate (from
+    cache or via \texttt{osdp\_PIVDATA} for \code{0x1017}/inner tag \code{0x70}), verify SKI matches
+    \emph{VCI Anchor IIN}, verify SPKI matches the stored anchor record, verify PIV or PIV-I
+    content-signing EKU OID, verify validity period (expired certificate \textbf{SHALL} cause
+    session rejection and anchor unload), and perform X.509 path validation and revocation per
+    deployment policy.
+  \item Restored \emph{VCI Trust Anchor ID} to \texttt{osdp\_CARDSTATUSR} with normative language;
+    added \emph{VCI CVC IIN} and \emph{VCI Anchor IIN} fields (each 8~bytes) so the ACU receives the
+    IIN pair needed to distinguish direct and intermediate verification paths.
+  \item Updated \texttt{osdp\_PIVVCITASTATUSR}: clarified that \emph{Available Bytes} reflects
+    variable-length accounting and that the per-record IIN is the anchor selector from the stored
+    trust anchor record, not necessarily the secure messaging CVC IIN reported in
+    \texttt{osdp\_CARDSTATUSR}.
+  \item Added VCI security preconditions: all VCI-related commands \textbf{SHALL} be rejected unless
+    OSDP Secure Channel~3.0 is active and not using factory/default keys; failures reported via
+    \texttt{osdp\_PDERROR} \code{0x0006}.
+\end{itemize}
+
+\subsubsection*{2026-01-21}
+\begin{itemize}
+  \item Error-handling cleanup and code assignments: \texttt{osdp\_PIVPUTDATA} now \textbf{SHALL}
+    report failures via \texttt{osdp\_PDERROR} (status word optional) so writes can’t silently
+    succeed.
+  \item \texttt{osdp\_PIVSPE} adds result code \code{0x09} in \texttt{osdp\_PIVSPER} for “VCI not
+    established.”
+  \item PDERROR is credential/global only; PD capability gaps stay \texttt{osdp\_NAK}.
+  \item OSDP~2.2-format replies (e.g., \texttt{osdp\_CRAUTHR}, \texttt{osdp\_PIVDATAR}) remain
+    unchanged, with optional follow-up \texttt{osdp\_PDERROR} detail if the PD has it.
+  \item Documented tentative command/reply codes for the new PIV set: commands \code{0xA6} (VCI
+    trust-anchor status) through \code{0xAF} (VCI trust-anchor load), and replies
+    \code{0x85}-\code{0x89} for the new responses.
+\end{itemize}
+
+\subsubsection*{2026-01-07}
+\begin{itemize}
+  \item Added a PIV Mode interface-mask table aligned to Function Code~13 bits.
+  \item Clarified CRAUTHR's full GENERAL AUTHENTICATE response payload, with status words carried
+    through PDERROR.
+  \item Clarified CARDSTATUS and CARDSTATUSR behavior: solicited status after PD preparation, with
+    an error on credential removal.
+  \item Remapped PIV error codes to the \code{0x10xx} block and added PIV APDU references.
+  \item Aligned PIVDATA selection of Discovery (\code{0x7E}) and BIT (\code{0x7F61}) subtags with
+    SP~800-73-4.
+  \item Clarified PDERROR's single-error reply and PIVXMITPAIRING submission before VCI
+    establishment when the credential requires pairing.
+\end{itemize}
+
+\subsubsection*{2025-12-10}
+\begin{itemize}
+  \item Consolidated application-level errors on \texttt{osdp\_PDERROR} (two-byte codes, optional
+    SW1\textbar SW2 for APDU failures, multi-error support)
+  \item moved the PIV error set to \code{0x0100}-\code{0x01FF} and updated PIV commands to use
+    \texttt{osdp\_PDERROR} (transport faults remain \texttt{osdp\_NAK})
+  \item made the Global Interface Mask in \texttt{osdp\_PIVMODE} a required byte (no TLV tag) with
+    an updated field layout
+  \item clarified that \texttt{osdp\_CARDSTATUSR} is solicited-only after PD preparation with
+    poll-based \texttt{osdp\_RAW} as the aggregated card-present indication
+  \item and noted the deprecation of \texttt{osdp\_GENAUTH} with a recommendation to migrate to
+    \texttt{osdp\_CRAUTH}.
+\end{itemize}
+
+\subsubsection*{2025-12-04}
+\begin{itemize}
+  \item Clarified that \texttt{osdp\_CRAUTHR} returns the full \texttt{GENERAL AUTHENTICATE} data
+    including the Dynamic Authentication Template (excluding only the ISO/IEC~7816 status word).
+\end{itemize}
+
+\subsubsection*{2025-11-12}
+\begin{itemize}
+  \item Added PIV Biometric Match request/reply and tables (one-bit type values only)
+  \item moved Enhanced PIV NAKs to a 0x20+ base (added 0x27 Credential Not Present/Removed, 0x28
+    Biometric Type Not Supported; clarified 0x23 Credential Security Status Not Satisfied)
+  \item aligned CRAUTHR error handling to reference the enhanced NAK set
+  \item relocated Enhanced PIV (0x04) and PIV Auto (0x08) indicators to Function Code 12 and cleaned
+    Function Code 13 to interface-only bits (removed non-interface flags; removed PIV Auto from
+    Function Code 14)
+  \item updated CARDSTATUS gating to Function Code 12 bit 0x04
+  \item added a PIV Mode Flags table and clarified PIV Mode AID encoding
+  \item enabled PDF TOC hyperlinks and improved table/caption pagination.
+\end{itemize}
+
+\subsubsection*{2025-10-30}
+\begin{itemize}
+  \item Clarified CRAUTH command/reply behaviour (including RSA, AES, and ECC support), overhauled
+    PIV Mode configuration with TLV-based application and interface controls (including PIV Auto),
+    added card status request/reply messages, expanded PIV data retrieval semantics, introduced PIV
+    Put Data, PIV Secure PIN Entry, TWIC privacy-key load, VCI pairing transmit, and VCI
+    trust-anchor load/status commands, and documented the enhanced error-code set (including VCI/PIV
+    Auto conditions).
+\end{itemize}
+
+\subsubsection*{2025-09-17}
+\begin{itemize}
+  \item Major PIV Mode and SPE revisions.
+\end{itemize}
+
+\subsubsection*{2025-06-25}
+\begin{itemize}
+  \item Added multi-AID usage and VCI support notes.
+\end{itemize}
+
+\subsubsection*{2025-05-27}
+\begin{itemize}
+  \item New function code definitions for 3.0 biometric handling.
+\end{itemize}

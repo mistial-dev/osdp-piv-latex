@@ -132,6 +132,24 @@ def derive_piv_auto_challenge(piv_auto_kdk: bytes, template: bytes, length: int)
     return kmac.digest()
 
 
+def derive_twic_aca_challenge(piv_auto_kdk: bytes, template: bytes) -> bytes:
+    """Derive the proposed 127-byte TWIC ACA challenge message."""
+    if len(piv_auto_kdk) != 32:
+        raise ValueError("PIV Auto KDK must be 32 bytes")
+    if len(template) != 97 or template[:14] != b"OSDP-PIV-AUTO\x01":
+        raise ValueError("TWIC ACA requires the 97-byte Auto template")
+    if template[22:47] == bytes(25) or template[47:63] != bytes(16):
+        raise ValueError("TWIC ACA requires certified FASC-N and zero UUID")
+    if template[63] != 0x9E or template[64] not in (0x07, 0x14):
+        raise ValueError("TWIC ACA requires 9E with RSA-2048 or P-384")
+    return KMAC256.new(
+        key=piv_auto_kdk,
+        data=template,
+        mac_len=127,
+        custom=b"OSDP-TWIC-AUTO-CHALLENGE-v1",
+    ).digest()
+
+
 def encode_len(length: int) -> bytes:
     if length < 0:
         raise ValueError("negative length")
@@ -191,12 +209,19 @@ def children(data: bytes) -> list[tuple[bytes, bytes, bytes]]:
 
 
 def select_piv_apdu() -> bytes:
-    return b"\x00\xA4\x04\x00" + bytes([len(PIV_AID)]) + PIV_AID
+    return b"\x00\xA4\x04\x00" + bytes([len(PIV_AID)]) + PIV_AID + b"\xFF"
 
 
 def get_data_apdu(object_tag: bytes) -> bytes:
     data = encode_tlv(0x5C, object_tag)
-    return b"\x00\xCB\x3F\xFF" + bytes([len(data)]) + data
+    return b"\x00\xCB\x3F\xFF" + bytes([len(data)]) + data + b"\xFF"
+
+
+def get_response_apdu(sw2: int) -> bytes:
+    """Request a continuation with an explicit short length capped at 255."""
+    if not 0 <= sw2 <= 255:
+        raise ValueError("SW2 must be one byte")
+    return b"\x00\xC0\x00\x00" + bytes([min(sw2 or 256, 255)])
 
 
 def verify_pin_apdu(pin: str, reference: int = 0x80) -> bytes:
@@ -210,7 +235,7 @@ def dynamic_auth_template(input_value: bytes, *, input_tag: int = 0x81) -> bytes
     return encode_tlv(0x7C, encode_tlv(0x82, b"") + encode_tlv(input_tag, input_value))
 
 
-def general_authenticate_apdu(profile: PivProfile, input_value: bytes, *, cla: int = 0x00, le: int | None = 0x00) -> bytes:
+def general_authenticate_apdu(profile: PivProfile, input_value: bytes, *, cla: int = 0x00, le: int | None = 0xFFFF) -> bytes:
     input_tag = 0x85 if profile.operation is Operation.KEY_AGREEMENT else 0x81
     data = dynamic_auth_template(input_value, input_tag=input_tag)
     if len(data) <= 255:
@@ -218,7 +243,10 @@ def general_authenticate_apdu(profile: PivProfile, input_value: bytes, *, cla: i
     else:
         apdu = bytes([cla, 0x87, profile.algorithm_id, profile.key_ref, 0x00]) + len(data).to_bytes(2, "big") + data
     if le is not None:
-        apdu += bytes([le])
+        if not 1 <= le <= 0xFFFF:
+            raise ValueError("response length must be explicit and nonzero")
+        width = 1 if len(data) <= 255 else 2
+        apdu += min(le, 0xFF if width == 1 else 0xFFFF).to_bytes(width, "big")
     return apdu
 
 
@@ -272,7 +300,9 @@ def chunk_command_apdu(apdu: bytes, *, max_data: int = 255) -> list[bytes]:
         cla = parsed["cla"] | 0x10 if offset + max_data < len(data) else parsed["cla"] & ~0x10
         piece = data[offset : offset + max_data]
         chunks.append(bytes([cla, 0x87, parsed["algorithm_id"], parsed["key_ref"], len(piece)]) + piece)
-    chunks[-1] += b"\x00"
+    if parsed["le"] is not None:
+        length = int.from_bytes(parsed["le"], "big") or 65536
+        chunks[-1] += bytes([min(length, 0xFF)])
     return chunks
 
 

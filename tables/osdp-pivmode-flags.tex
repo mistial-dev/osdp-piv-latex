@@ -1,6 +1,6 @@
 \begin{ValueDescriptionTable}{PIV Mode Flags}{Mask}
   \label{tab:pivmode-flags}
-  \ValueDescriptionRow{0x01}{Enable autonomous PIV (PIV Auto). The PD prepares the credential, derives a KMAC256 challenge from the configured counters and entropy, and reports the authentication result using \code{osdp_PIVSTATUS}.}
-  \ValueDescriptionRow{0x02}{Enable credential Secure Messaging preparation over contact and contactless interfaces. On contactless, also enable VCI when the credential permits VCI without pairing. Applies to autonomous and commanded operation.}
+  \ValueDescriptionRow{0x01}{Enable autonomous authentication (PIV Auto). Data Model \code{0x01} selects PIV authentication; \code{0x02} selects TWIC Mode 2 Active Card Authentication. The PD prepares the credential, derives the profile-specific challenge, and reports the result using \code{osdp_PIVSTATUS}.}
+  \ValueDescriptionRow{0x02}{Enable credential Secure Messaging preparation over contact and contactless interfaces. On contactless, also enable VCI when the credential permits VCI without pairing. Applies to autonomous and commanded operation. For PUT DATA, setting this flag requires an established SM session before writing; clearing it selects ordinary PUT DATA.}
   \ValueDescriptionRow{0x04}{Enforce FICAM strict mode (PIV applications only).}
 \end{ValueDescriptionTable}

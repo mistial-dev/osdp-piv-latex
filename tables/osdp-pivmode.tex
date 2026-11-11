@@ -5,7 +5,7 @@
   \PacketRow{0x02}{MpFragmentSize}{Number of configuration data bytes following the multi-part fields in this fragment, least-significant byte first.}{0x0000-0xFFFF}
   \PacketRow{0x01}{PIV Mode Flags}{First byte of the reassembled configuration data; global behaviour flags (Section~\ref{sec:pivmode}).}{0x00-0xFF}
   \PacketRow{0x01}{Config Count}{Number of Configuration Entry TLVs (tag \code{0x01}); excludes Resume.}{0x01-0x20}
-  \PacketRow{0x01}{Global Interface Mask}{Bitmask limiting interfaces available to all configurations (bit~0 contact, bit~1 contactless, bit~3 Bluetooth; bit~2 reserved and set to zero).}{0x00-0x0B}
+  \PacketRow{0x01}{Global Interface Mask}{Bitmask limiting interfaces available to all configurations (bit~0 contact, bit~1 contactless, bit~4 Bluetooth; other bits reserved and set to zero).}{0x00-0x13}
   \PacketRow{0x04}{Series Counter}{Present only with Auto. Fresh ACU-assigned Series for ordinary configuration; installed Series for Resume. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
   \PacketRow{0x04}{Sequence Counter}{Present only with Auto. Initial PD allocation value for ordinary configuration; exact next unused value for Resume. Least-significant byte first.}{0x00000000\allowbreak-0xFFFFFFFF}
   \PacketRow{0x20}{Supplemental Entropy}{Conditional fixed-width field present only when PIV Auto is enabled. All zeroes are permitted but not recommended.}{0x20 octets}
